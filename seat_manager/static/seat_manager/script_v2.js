@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+    window.tableDataMap = {};
+    window.isEditMode = false;
     // --- Theme Toggle ---
     const themeToggleBtn = document.getElementById('theme-toggle');
     const themeIcon = document.getElementById('theme-icon');
@@ -45,6 +47,555 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('help-got-it-btn')?.addEventListener('click', closeHelp);
     helpModal?.addEventListener('click', (e) => { if (e.target === helpModal) closeHelp(); });
 
+    // --- History Modal ---
+    const historyModal = document.getElementById('history-modal');
+    document.getElementById('history-btn')?.addEventListener('click', () => {
+        historyModal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        renderHistoryList();
+    });
+    const closeHistory = () => {
+        historyModal.style.display = 'none';
+        document.body.style.overflow = '';
+    };
+    document.getElementById('history-close-btn')?.addEventListener('click', closeHistory);
+    historyModal?.addEventListener('click', (e) => { if (e.target === historyModal) closeHistory(); });
+
+    // --- Fill Seat Modal ---
+    const fillSeatModal = document.getElementById('fill-seat-modal');
+    const fillSeatForm = document.getElementById('fill-seat-form');
+    let targetEmptySeat = null;
+
+    const closeFillSeat = () => {
+        fillSeatModal.style.display = 'none';
+        document.body.style.overflow = '';
+        fillSeatForm.reset();
+        targetEmptySeat = null;
+    };
+    document.getElementById('fill-seat-close-btn')?.addEventListener('click', closeFillSeat);
+    fillSeatModal?.addEventListener('click', (e) => { if (e.target === fillSeatModal) closeFillSeat(); });
+
+    fillSeatForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!targetEmptySeat) return;
+
+        const enrollment = document.getElementById('fill-seat-enrollment').value.trim();
+        const name = document.getElementById('fill-seat-name').value.trim();
+        const year = document.getElementById('fill-seat-year').value;
+
+        // Transform the empty seat into an occupied seat
+        targetEmptySeat.classList.remove('empty-seat');
+        targetEmptySeat.classList.add('occupied-seat');
+        targetEmptySeat.dataset.enrollment = enrollment;
+        targetEmptySeat.dataset.name = name;
+        targetEmptySeat.dataset.year = year;
+        const titleText = name ? `${enrollment} - ${name}\nDrag to rearrange.` : `${enrollment}\nDrag to rearrange.`;
+        targetEmptySeat.setAttribute('title', titleText);
+
+        targetEmptySeat.innerHTML = `
+            <div class="student-id">${enrollment}</div>
+            <div class="year-badge ${year.replace(' ', '-')}">${year}</div>
+        `;
+
+        // Provide a quick feedback highlight
+        targetEmptySeat.classList.add('highlight-drop');
+        setTimeout(() => targetEmptySeat.classList.remove('highlight-drop'), 500);
+
+        closeFillSeat();
+
+        if (window.syncSeatingDOMToGlobalData) {
+            window.syncSeatingDOMToGlobalData();
+        }
+    });
+
+    // Delegated click listener for empty seats
+    document.addEventListener('click', (e) => {
+        const emptySeat = e.target.closest('.empty-seat');
+        if (emptySeat) {
+            targetEmptySeat = emptySeat;
+            fillSeatModal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => document.getElementById('fill-seat-enrollment').focus(), 100);
+        }
+    });
+
+    // --- Buffer Edit Mode Logic ---
+    const editSeatingBtn = document.getElementById('edit-seating-btn');
+    const confirmSeatingBtn = document.getElementById('confirm-seating-btn');
+    const cancelSeatingBtn = document.getElementById('cancel-seating-btn');
+    const dragBufferTray = document.getElementById('drag-buffer');
+    const bufferWarning = document.getElementById('buffer-warning');
+    const bufferDropzone = document.getElementById('buffer-dropzone');
+    const bufferPlaceholder = document.getElementById('buffer-placeholder');
+
+    // Map from buffer seat DOM element → original empty seat DOM element
+    window._bufferOriginMap = new Map();
+    // DOM snapshot of the full seating tab for cancel-restore
+    window._seatingSnapshot = null;
+
+    function exitEditMode() {
+        window.isEditMode = false;
+        bufferWarning.classList.add('hidden');
+        confirmSeatingBtn.classList.add('hidden');
+        dragBufferTray.classList.add('hidden');
+        editSeatingBtn.classList.remove('hidden');
+        document.querySelectorAll('.seating-table').forEach(t => t.classList.remove('edit-mode-active'));
+        // Clear buffer map
+        window._bufferOriginMap = new Map();
+        window._seatingSnapshot = null;
+    }
+
+    if (editSeatingBtn) {
+        editSeatingBtn.addEventListener('click', () => {
+            window.isEditMode = true;
+            editSeatingBtn.classList.add('hidden');
+            confirmSeatingBtn.classList.remove('hidden');
+            dragBufferTray.classList.remove('hidden');
+            bufferWarning.classList.add('hidden');
+
+            // Snapshot the seating tab so we can restore on Cancel
+            window._seatingSnapshot = document.getElementById('tab-seating').innerHTML;
+
+            // Add a visual cue to the tables
+            document.querySelectorAll('.seating-table').forEach(t => t.classList.add('edit-mode-active'));
+        });
+    }
+
+    if (confirmSeatingBtn) {
+        confirmSeatingBtn.addEventListener('click', () => {
+            // Check if buffer is empty
+            const hasStudentsInBuffer = bufferDropzone.querySelectorAll('.chart-seat').length > 0;
+            if (hasStudentsInBuffer) {
+                bufferWarning.classList.remove('hidden');
+                return;
+            }
+
+            // Valid to confirm — sync data and exit
+            exitEditMode();
+
+            if (window.syncSeatingDOMToGlobalData) {
+                window.syncSeatingDOMToGlobalData();
+            }
+        });
+    }
+
+    if (cancelSeatingBtn) {
+        cancelSeatingBtn.addEventListener('click', () => {
+            if (!confirm('Cancel all seating changes? This will revert everything back to before you clicked "Edit Seating".')) return;
+
+            // Restore the seating tab to the snapshot taken at edit start
+            if (window._seatingSnapshot !== null) {
+                document.getElementById('tab-seating').innerHTML = window._seatingSnapshot;
+                // Re-init drag-and-drop references since DOM was replaced
+                if (typeof initializeDragAndDrop === 'function') {
+                    setTimeout(initializeDragAndDrop, 50);
+                }
+            }
+
+            // Clear buffer dropzone
+            bufferDropzone.querySelectorAll('.chart-seat').forEach(s => s.remove());
+            if (bufferPlaceholder) bufferPlaceholder.style.display = 'block';
+
+            exitEditMode();
+        });
+    }
+
+    // Initialize Buffer Dropzone Actions
+    if (bufferDropzone) {
+        bufferDropzone.addEventListener('dragover', function (e) {
+            if (!window.isEditMode) return;
+            if (window.draggedSeat) {
+                e.preventDefault();
+                this.classList.add('drag-over-buffer');
+            }
+        });
+
+        bufferDropzone.addEventListener('dragleave', function (e) {
+            this.classList.remove('drag-over-buffer');
+        });
+
+        bufferDropzone.addEventListener('drop', function (e) {
+            if (!window.isEditMode) return;
+            e.preventDefault();
+            this.classList.remove('drag-over-buffer');
+
+            if (window.draggedSeat && window.draggedSeat.closest('table')) {
+                // Moving from a table to the buffer.
+                const originalSeatEl = window.draggedSeat; // keep reference before we clear it
+
+                // Hide placeholder
+                bufferPlaceholder.style.display = 'none';
+
+                // Create a buffer seat element
+                const bufferSeat = document.createElement('div');
+                bufferSeat.className = 'chart-seat ' + [...window.draggedSeat.classList].filter(c => !['chart-seat', 'dragging', 'drag-over', 'highlight-drop'].includes(c)).join(' ');
+                bufferSeat.style.position = 'relative'; // needed for close btn positioning
+                bufferSeat.innerHTML = window.draggedSeat.innerHTML;
+                Object.keys(window.draggedSeat.dataset).forEach(k => bufferSeat.dataset[k] = window.draggedSeat.dataset[k]);
+                bufferSeat.draggable = true;
+                bufferSeat.style.minWidth = '120px';
+                bufferSeat.style.cursor = 'grab';
+
+                // ✕ Close button — returns student to their original seat
+                const closeBtn = document.createElement('button');
+                closeBtn.innerHTML = '&times;';
+                closeBtn.title = 'Remove from buffer & return to original seat';
+                closeBtn.style.cssText = `
+                    position: absolute; top: 2px; right: 2px;
+                    background: rgba(239,68,68,0.85); color: white;
+                    border: none; border-radius: 50%;
+                    width: 18px; height: 18px; font-size: 12px; line-height: 1;
+                    cursor: pointer; display: flex; align-items: center; justify-content: center;
+                    z-index: 10; padding: 0;
+                `;
+                closeBtn.addEventListener('click', (evt) => {
+                    evt.stopPropagation();
+                    // Retrieve the original seat reference from the map
+                    const origin = window._bufferOriginMap.get(bufferSeat);
+                    if (origin) {
+                        // Restore student data and appearance back to the original seat
+                        origin.innerHTML = bufferSeat.innerHTML;
+                        // Remove the close button from restored HTML (it's inside bufferSeat, not origin)
+                        const closeBtnInOrigin = origin.querySelector('button[title="Remove from buffer & return to original seat"]');
+                        if (closeBtnInOrigin) closeBtnInOrigin.remove();
+                        origin.className = 'chart-seat ' + [...bufferSeat.classList]
+                            .filter(c => !['chart-seat', 'dragging', 'drag-over'].includes(c)).join(' ');
+                        Object.keys(bufferSeat.dataset).forEach(k => origin.dataset[k] = bufferSeat.dataset[k]);
+                        origin.draggable = true;
+                    }
+                    window._bufferOriginMap.delete(bufferSeat);
+                    bufferSeat.remove();
+                    // Show placeholder if buffer is now empty
+                    if (bufferDropzone.querySelectorAll('.chart-seat').length === 0) {
+                        if (bufferPlaceholder) bufferPlaceholder.style.display = 'block';
+                    }
+                });
+                bufferSeat.appendChild(closeBtn);
+
+                // Store origin seat reference in the map
+                window._bufferOriginMap.set(bufferSeat, originalSeatEl);
+
+                // Attach drag events to this new buffer seat
+                bufferSeat.addEventListener('dragstart', function (e) {
+                    if (!window.isEditMode) return;
+                    window.draggedSeat = this;
+                    e.dataTransfer.effectAllowed = 'move';
+                    this.classList.add('dragging');
+                });
+                bufferSeat.addEventListener('dragend', function (e) {
+                    this.classList.remove('dragging');
+                    document.querySelectorAll('.chart-seat').forEach(s => s.classList.remove('drag-over'));
+                    window.draggedSeat = null;
+                });
+
+                bufferDropzone.appendChild(bufferSeat);
+
+                // Clear the original seat in the table and make it an empty seat
+                window.draggedSeat.innerHTML = '';
+                window.draggedSeat.className = 'chart-seat empty-seat';
+                Object.keys(window.draggedSeat.dataset).forEach(k => delete window.draggedSeat.dataset[k]);
+
+                // Keep the dropped seat draggable so things can be dragged into it
+                window.draggedSeat.draggable = true;
+            }
+        });
+    }
+
+    // --- Add Room Modal ---
+    const addRoomModal = document.getElementById('add-room-modal');
+    const addRoomForm = document.getElementById('add-room-form');
+
+    document.getElementById('add-room-btn')?.addEventListener('click', () => {
+        addRoomModal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    });
+
+    const closeAddRoom = () => {
+        addRoomModal.style.display = 'none';
+        document.body.style.overflow = '';
+        addRoomForm.reset();
+        document.getElementById('add-room-error').style.display = 'none';
+    };
+    document.getElementById('add-room-close-btn')?.addEventListener('click', closeAddRoom);
+    addRoomModal?.addEventListener('click', (e) => { if (e.target === addRoomModal) closeAddRoom(); });
+
+    addRoomForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Ensure we have active configuration to append to
+        if (!window.activePreset || !window.globalSeatingData) {
+            alert("No active session configuration found. Please generate the master chart first.");
+            return;
+        }
+
+        const submitBtn = document.getElementById('generate-extra-room-btn');
+        const errorDiv = document.getElementById('add-room-error');
+        const originalText = submitBtn.innerHTML;
+
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+        submitBtn.disabled = true;
+        errorDiv.style.display = 'none';
+
+        try {
+            const formData = new FormData();
+
+            // 1. Base details
+            formData.append('branch_name', document.getElementById('department-name').value.trim() || 'General');
+
+            // 2. Schedule Config (Must match the existing active session perfectly)
+            formData.append('schedule_config', JSON.stringify(window.activePreset.timelineSetup));
+
+            // 3. Room Config (Just this single extra room)
+            const newRoomConfig = [{
+                name: document.getElementById('add-room-name').value.trim(),
+                rows: document.getElementById('add-room-rows').value,
+                cols: document.getElementById('add-room-cols').value,
+                seating_pattern: document.getElementById('add-room-pattern').value
+            }];
+            formData.append('room_config', JSON.stringify(newRoomConfig));
+
+            // 4. Student Data (File or Empty map)
+            const fileInput = document.getElementById('add-room-student-file');
+            if (fileInput.files.length > 0) {
+                formData.append('student_file', fileInput.files[0]);
+            } else {
+                // To get empty seats, we just send empty year arrays
+                formData.append('student_data', JSON.stringify({ "I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": [] }));
+            }
+
+            const response = await fetch('/generate/', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Server error occurred during generation.');
+            }
+
+            // MERGE results into global data
+            // Append Seating Plans
+            window.globalSeatingData.seating_plans.push(...data.seating_plans);
+
+            // Append Room Attendance
+            if (data.room_attendance_data) {
+                window.globalSeatingData.room_attendance_data.push(...data.room_attendance_data);
+            }
+
+            // Merge Master Attendance
+            if (data.attendance_data) {
+                for (const year of ['I Yr', 'II Yr', 'III Yr', 'IV Yr']) {
+                    if (data.attendance_data[year] && data.attendance_data[year].length > 0) {
+                        if (!window.globalSeatingData.attendance_data[year]) window.globalSeatingData.attendance_data[year] = [];
+                        window.globalSeatingData.attendance_data[year].push(...data.attendance_data[year]);
+                    }
+                }
+            }
+
+            closeAddRoom();
+
+            // Re-render
+            const instituteName = document.getElementById('institute-name').value.trim();
+            const departmentName = document.getElementById('department-name').value.trim();
+            renderResults(window.globalSeatingData, instituteName, window.lastLogoBase64 || '', departmentName);
+
+        } catch (error) {
+            errorDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Error: ${error.message}`;
+            errorDiv.style.display = 'flex';
+        } finally {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }
+    });
+
+    // --- Preset Loading & Saving ---
+    window.activePreset = null; // Stores preset data if loaded
+
+    function renderHistoryList() {
+        const container = document.getElementById('history-list-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        let presets = [];
+        try {
+            presets = JSON.parse(localStorage.getItem('examSeatingPresets')) || [];
+        } catch (e) { }
+
+        if (presets.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 2rem;">No saved configurations found. Generate a chart to save one!</div>';
+            return;
+        }
+
+        presets.forEach((preset, index) => {
+            const presetDiv = document.createElement('div');
+            presetDiv.style.background = 'rgba(139,92,246,0.08)';
+            presetDiv.style.border = '1px solid rgba(139,92,246,0.25)';
+            presetDiv.style.borderRadius = '12px';
+            presetDiv.style.padding = '1rem';
+            presetDiv.style.display = 'flex';
+            presetDiv.style.justifyContent = 'space-between';
+            presetDiv.style.alignItems = 'center';
+            presetDiv.innerHTML = `
+                <div>
+                    <h4 style="margin: 0; color: var(--text-main); font-size: 1.1rem;">${preset.name || 'Configuration ' + (presets.length - index)}</h4>
+                    <p style="margin: 0.3rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                        <i class="fa-regular fa-clock" style="margin-right: 4px;"></i>${preset.dateStr}<br>
+                        Rooms: ${preset.roomsCount} | Shifts: ${preset.shiftsCount}
+                    </p>
+                </div>
+                <button class="btn outline-btn" style="padding: 0.5rem 1rem;" onclick="restorePreset(${index})">
+                    Restore <i class="fa-solid fa-arrow-right-long" style="margin-left: 5px;"></i>
+                </button>
+            `;
+            container.appendChild(presetDiv);
+        });
+    }
+
+    window.restorePreset = function (index) {
+        let presets = [];
+        try { presets = JSON.parse(localStorage.getItem('examSeatingPresets')) || []; } catch (e) { }
+        const preset = presets[index];
+        if (!preset) return;
+
+        // Populate base config
+        document.getElementById('institute-name').value = preset.instituteName || '';
+        document.getElementById('department-name').value = preset.departmentSelect || '';
+        if (preset.departmentSelect === 'Custom') {
+            document.getElementById('custom-department-wrapper').classList.remove('hidden');
+            document.getElementById('custom-department-name').value = preset.customDepartment || '';
+        } else {
+            document.getElementById('custom-department-wrapper').classList.add('hidden');
+        }
+        document.getElementById('mid-sem').value = preset.midSem || '1';
+
+        // Subject source
+        const srcExcel = document.getElementById('src-excel');
+        const srcManual = document.getElementById('src-manual');
+        if (preset.subjectSource === 'excel') {
+            if (srcExcel) srcExcel.checked = true;
+        } else {
+            if (srcManual) srcManual.checked = true;
+        }
+        // Trigger subject source change event
+        srcExcel?.dispatchEvent(new Event('change', { bubbles: true }));
+        srcManual?.dispatchEvent(new Event('change', { bubbles: true }));
+
+        if (preset.subjectSource === 'manual') {
+            const manualConfig = preset.subjectCodes || { "I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": [] };
+            document.getElementById('manual-subj-i').value = manualConfig["I Yr"].join(', ');
+            document.getElementById('manual-subj-ii').value = manualConfig["II Yr"].join(', ');
+            document.getElementById('manual-subj-iii').value = manualConfig["III Yr"].join(', ');
+            document.getElementById('manual-subj-iv').value = manualConfig["IV Yr"].join(', ');
+            updateManualSubjects();
+        } else {
+            // Restore window.subjectCodes directly if it was from Excel
+            window.subjectCodes = preset.subjectCodes || { "I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": [] };
+            // Note: the file input itself remains empty, but we have the parsed data.
+            // We should ideally show a label that subject data is loaded from preset.
+            const subjectLabel = document.querySelector('label[for="subject-file"]');
+            if (subjectLabel) subjectLabel.innerHTML = 'Subject Codes <b>(Loaded from preset)</b>';
+        }
+
+        // We can't set student-file input, so we save preset globally and rely on `studentDataStr`
+        window.activePreset = preset;
+        const studentLabel = document.querySelector('label[for="student-file"]');
+        if (studentLabel) studentLabel.innerHTML = 'Student List <b>(Loaded from preset)</b>';
+        document.getElementById('student-file').required = false;
+
+        // Restore Timetable Setup
+        datesContainer.innerHTML = '';
+        dateCount = 0;
+
+        const schedule = JSON.parse(preset.scheduleConfigStr || '[]');
+        if (schedule.length > 0) {
+            schedule.forEach(dt => {
+                createDateBlock();
+                const currentBlock = datesContainer.lastElementChild;
+                const dInput = currentBlock.querySelector('.date-input');
+                if (dInput) dInput.value = dt.date;
+
+                const shiftsCont = currentBlock.querySelector('.shifts-container');
+                shiftsCont.innerHTML = '';
+
+                dt.shifts.forEach((sh, shIdx) => {
+                    createShiftBlock(`date-${Date.now()}-${shIdx}`, shIdx + 1, shiftsCont);
+                    const currentShiftBlock = shiftsCont.lastElementChild;
+
+                    // Parse "HH:MM AM - HH:MM PM" string
+                    try {
+                        const parts = sh.time.split('-');
+                        const startParts = parts[0].trim().split(' ');
+                        const [sHr, sMin] = startParts[0].split(':');
+                        const sAmPm = startParts[1];
+                        currentShiftBlock.querySelector('.shift-start-hr').value = String(sHr).padStart(2, '0');
+                        currentShiftBlock.querySelector('.shift-start-min').value = String(sMin).padStart(2, '0');
+                        currentShiftBlock.querySelector('.shift-start-ampm').value = sAmPm;
+
+                        const endParts = parts[1].trim().split(' ');
+                        const [eHr, eMin] = endParts[0].split(':');
+                        const eAmPm = endParts[1];
+                        currentShiftBlock.querySelector('.shift-end-hr').value = String(eHr).padStart(2, '0');
+                        currentShiftBlock.querySelector('.shift-end-min').value = String(eMin).padStart(2, '0');
+                        currentShiftBlock.querySelector('.shift-end-ampm').value = eAmPm;
+                    } catch (ex) { console.error("Could not parse shift time", ex); }
+
+                    // Set Year Checkboxes and Selects
+                    const selectedYears = sh.years || []; // array of {year, subject}
+                    const yearMap = {};
+                    selectedYears.forEach(y => yearMap[y.year] = y.subject);
+
+                    currentShiftBlock.querySelectorAll('.year-checkbox').forEach(cb => {
+                        const yr = cb.dataset.year;
+                        if (yearMap[yr]) {
+                            cb.checked = true;
+                            cb.dispatchEvent(new Event('change'));
+                            const sel = currentShiftBlock.querySelector(`.subject-select[data-year="${yr}"]`);
+                            if (sel) sel.value = yearMap[yr];
+                        }
+                    });
+                });
+            });
+            updateSubjectOptions();
+        } else {
+            createDateBlock();
+        }
+
+        // Restore Rooms Setup
+        const roomsCfg = JSON.parse(preset.roomConfigStr || '[]');
+        document.getElementById('room-count').value = roomsCfg.length;
+        if (roomsCfg.length > 0) {
+            initializeRooms(roomsCfg.length);
+            mainContent.classList.remove('hidden');
+
+            roomsCfg.forEach((rc, rIdx) => {
+                const id = rIdx + 1; // Room id in roomData is 1-indexed (1, 2, 3...)
+                document.getElementById(`room-name-input-${id}`).value = rc.name;
+                document.getElementById(`rows-${id}`).value = rc.rows;
+                document.getElementById(`cols-${id}`).value = rc.cols;
+                document.getElementById(`door-${id}`).value = rc.door || 'top-right';
+                document.getElementById(`pattern-${id}`).value = rc.seating_pattern || 'IV Yr, III Yr, II Yr, I Yr';
+                updateRoomPreview(id);
+            });
+        }
+
+        closeHistory();
+
+        // Show success flash
+        const hcBtn = document.getElementById('history-btn');
+        if (hcBtn) {
+            const org = hcBtn.innerHTML;
+            hcBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+            hcBtn.style.background = 'var(--success-color)';
+            hcBtn.style.color = 'white';
+            setTimeout(() => {
+                hcBtn.innerHTML = org;
+                hcBtn.style.background = '';
+                hcBtn.style.color = '';
+            }, 1500);
+        }
+    };
+
     // --- Elements ---
     const roomCountInput = document.getElementById('room-count');
     const generateRoomsBtn = document.getElementById('generate-rooms-btn');
@@ -72,6 +623,30 @@ document.addEventListener('DOMContentLoaded', () => {
     let roomData = [];
 
     // --- Tab Navigation Setup ---
+    const seatingOnlyBtns = ['edit-seating-btn', 'confirm-seating-btn', 'add-room-btn'];
+
+    function updateSeatingButtons(targetId) {
+        const isSeatingTab = targetId === 'tab-seating';
+        seatingOnlyBtns.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (isSeatingTab) {
+                    // For confirm-seating-btn, only show if edit mode is active
+                    if (id === 'confirm-seating-btn') {
+                        el.classList.toggle('hidden', !window.isEditMode);
+                    } else if (id === 'edit-seating-btn') {
+                        // Only show edit btn when not in edit mode
+                        el.classList.toggle('hidden', window.isEditMode);
+                    } else {
+                        el.classList.remove('hidden');
+                    }
+                } else {
+                    el.classList.add('hidden');
+                }
+            }
+        });
+    }
+
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             // Remove active from all tabs
@@ -82,8 +657,14 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
             const targetId = btn.getAttribute('data-target');
             document.getElementById(targetId).classList.remove('hidden');
+
+            // Toggle seating-specific buttons
+            updateSeatingButtons(targetId);
         });
     });
+
+    // Hide seating-only buttons on initial load (timetable tab is shown first)
+    updateSeatingButtons('tab-timetable');
 
     // --- Subject Parsing logic ---
     window.subjectCodes = {
@@ -1082,13 +1663,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Prepare FormData
         const formData = new FormData();
-        if (!isManualObjectsMode) {
+
+        // If a new student file is uploaded, use it. Otherwise, if we restored a preset, send its base64 mapping if possible.
+        // Actually, the new backend accepts `student_data` as a JSON string!
+        if (studentFile) {
             formData.append('student_file', studentFile);
+            window.activePreset = null; // Clear active preset since they provided a new file
+            // Let's reset the label
+            const studentLabel = document.querySelector('label[for="student-file"]');
+            if (studentLabel) studentLabel.innerHTML = 'Student List (Excel)';
+        } else if (window.activePreset && window.activePreset.studentDataStr) {
+            formData.append('student_data', window.activePreset.studentDataStr);
         } else {
-            // Need to still pass student file, but maybe tell backend which mode we are in if we want to bypass subject logic there.
-            // Actually, backend only reads Student File (enrolment numbers). Subject codes are passed via `schedule_config` which is generated by the UI dropdowns.
-            // The python backend DOES NOT read subjects from excel, only students! So this form payload doesn't need to change for backend, UI already handled `subjectCodes` injection!
-            formData.append('student_file', studentFile);
+            finalError.textContent = 'Please upload a Student Excel file first or load a valid preset.';
+            finalError.classList.remove('hidden');
+            document.getElementById('config-section').scrollIntoView({ behavior: 'smooth' });
+            return;
         }
 
         formData.append('branch_name', document.getElementById('department-name').value);
@@ -1098,6 +1688,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalBtnHtml = finalGenerateBtn.innerHTML;
         finalGenerateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
         finalGenerateBtn.disabled = true;
+
+        // Save preset functionality wrapper
+        const saveCurrentConfiguration = async (instituteLogoBase64) => {
+            let studentDataStr = null;
+            if (studentFile) {
+                // If they just uploaded it, we should parse it to JSON so we can save it for future presets without backend reliance!
+                try {
+                    const data = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = e => resolve(new Uint8Array(e.target.result));
+                        reader.onerror = e => reject(e);
+                        reader.readAsArrayBuffer(studentFile);
+                    });
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    // Simple conversion just to store the basic structure we uploaded.
+                    // But wait! The python backend maps I, II, III, IV year columns. 
+                    // Instead of duplicating that logic here, and since we already just modified backend to accept JSON,
+                    // let's actually just parse all columns blindly and let python sort it out, OR we just save the file as a base64 DataURL?
+                    // Wait! I ALREADY MODIFIED THE BACKEND to expect `{ "I Yr": [...], "II Yr": [...] }`.
+                    // Since Python maps it from the file during generation, let's use the successful Generation's returned 'attendance_data' which contains the PERFECTLY PARSED "year_master" JSON!
+                    // We don't even need to parse the file on the client!!! 
+                } catch (e) { console.error("Preset saving error:", e); }
+            } else if (window.activePreset) {
+                studentDataStr = window.activePreset.studentDataStr;
+            }
+
+            return {
+                timestamp: Date.now(),
+                dateStr: new Date().toLocaleString(),
+                instituteName: document.getElementById('institute-name').value,
+                departmentSelect: document.getElementById('department-name').value,
+                customDepartment: document.getElementById('custom-department-name').value,
+                midSem: document.getElementById('mid-sem').value,
+                subjectSource: document.querySelector('input[name="subject-source"]:checked').value,
+                subjectCodes: window.subjectCodes,
+                scheduleConfigStr: JSON.stringify(scheduleConfig),
+                roomConfigStr: JSON.stringify(payloadRooms),
+                roomsCount: payloadRooms.length,
+                shiftsCount: scheduleConfig.reduce((acc, c) => acc + c.shifts.length, 0),
+                logoBase64: instituteLogoBase64 || (window.activePreset ? window.activePreset.logoBase64 : null),
+                studentDataStr: studentDataStr // to be updated next
+            };
+        };
 
         // 3. Send API Request
         try {
@@ -1117,6 +1751,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 4. Handle Success
             const instituteName = document.getElementById('institute-name').value || 'Institute Name';
+            const instituteSubheader = document.getElementById('institute-subheader')?.value.trim() || '';
             const instituteLogoFile = document.getElementById('institute-logo').files[0];
 
             const deptSelectVal = document.getElementById('department-name').value;
@@ -1125,14 +1760,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let instituteLogoBase64 = null;
             if (instituteLogoFile) {
-                instituteLogoBase64 = await new Promise(resolve => {
-                    const reader = new FileReader();
+                const reader = new FileReader();
+                const promise = new Promise(resolve => {
                     reader.onload = e => resolve(e.target.result);
-                    reader.readAsDataURL(instituteLogoFile);
                 });
+                reader.readAsDataURL(instituteLogoFile);
+                instituteLogoBase64 = await promise;
             }
 
-            renderResults(data, instituteName, instituteLogoBase64, finalDepartmentName);
+            // Populate the history presets!
+            const presetObj = await saveCurrentConfiguration(instituteLogoBase64);
+            // The python backend returns 'attendance_data' which is the parsed 'year_master' dict! This is brilliant!
+            presetObj.studentDataStr = JSON.stringify(data.attendance_data);
+            presetObj.name = `Config - ${scheduleConfig[0]?.date || 'Unknown Date'}`;
+
+            try {
+                let existingPresets = JSON.parse(localStorage.getItem('examSeatingPresets')) || [];
+                // Add to beginning, keep only last 4
+                existingPresets.unshift(presetObj);
+                if (existingPresets.length > 4) existingPresets = existingPresets.slice(0, 4);
+                localStorage.setItem('examSeatingPresets', JSON.stringify(existingPresets));
+            } catch (e) { console.error("Could not save preset to localStorage", e); }
+
+            renderResults(data, instituteName, instituteLogoBase64, finalDepartmentName, instituteSubheader);
 
         } catch (error) {
             finalError.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Error: ${error.message}`;
@@ -1301,7 +1951,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.classList.add('active');
     };
 
-    function renderResults(data, instituteName, instituteLogoBase64, departmentName) {
+    window.viewAllRooms = function (btn, prefix) {
+        document.querySelectorAll(`.${prefix}-room-panel`).forEach(el => el.classList.remove('hidden'));
+        document.querySelectorAll(`.${prefix}-room-btn`).forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+    };
+
+    function renderResults(data, instituteName, instituteLogoBase64, departmentName, instituteSubheader) {
         // Hide config, show results
         document.getElementById('config-section').classList.add('hidden');
         document.getElementById('timetable-builder-section').classList.add('hidden');
@@ -1315,6 +1971,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="text-align: center;">
                     <h1 style="font-size: 2rem; margin: 0; color: var(--text-main); text-transform: uppercase; font-family: 'Times New Roman', Times, serif;">${instituteName}</h1>
                     <p style="margin: 0.15rem 0 0 0; font-size: 1rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">Department of ${departmentName}</p>
+                    ${instituteSubheader ? `<p style="margin: 0.1rem 0 0 0; font-size: 0.9rem; color: var(--text-muted); white-space: pre-line; line-height: 1.5;">${instituteSubheader}</p>` : ''}
                     <p style="margin: 0.2rem 0 0 0; font-size: 1.2rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">${subtitle}</p>
                 </div>
             </div>
@@ -1401,6 +2058,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (seatingRoomsList.length > 0) {
             // Create pill nav for Rooms (flat tab structure exactly like Attendance)
             seatingHtml += `<div class="pill-nav" style="display:flex; justify-content:center; gap:10px; margin-bottom:2rem; flex-wrap:wrap;">`;
+
+            // Add a "View All" button to enable cross-room drag & drop
+            seatingHtml += `<button class="btn outline-btn tab-btn seating-room-btn" onclick="viewAllRooms(this, 'seating')" style="border-style: dashed; color: var(--accent-color); border-color: var(--accent-color);"><i class="fa-solid fa-layer-group"></i> View All</button>`;
+
             seatingRoomsList.forEach((room, i) => {
                 const safeRoom = room.replace(/\s/g, '_');
                 seatingHtml += `<button class="btn outline-btn tab-btn seating-room-btn ${i === 0 ? 'active' : ''}" onclick="switchRoomTab(this, '${safeRoom}', 'seating')">${room}</button>`;
@@ -1420,6 +2081,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Construct a compact single-line string of all dates/shifts sharing this layout
                     const sessionsHtml = plan.sessions.map(s => `<span style="white-space:nowrap;">${s.date} &nbsp;${s.shift}</span>`).join('<span style="margin:0 6px;opacity:0.5;">•</span>');
 
+                    const tableId = `tbl_${Math.random().toString(36).substr(2, 9)}`;
+                    window.tableDataMap[tableId] = {
+                        room_name: plan.room_name,
+                        sessions: plan.sessions,
+                        headers: plan.headers,
+                        rows: plan.rows,
+                        cols: plan.cols,
+                        door: plan.door
+                    };
+
                     seatingHtml += `
             <div class="glass-card ${orientationClass} print-container" style="margin-bottom: 4rem; overflow-x: auto; position: relative;">
                                 ${buildPrintHeader(`Seating Chart • ${plan.room_name}`)}
@@ -1429,7 +2100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 
                                 <div style="position: relative; display: inline-block; width: 100%; margin-top: 1.5rem;">
                                     <div class="door-indicator ${plan.door}"><i class="fa-solid fa-door-open"></i> Entry</div>
-                                    <table class="seating-table">
+                                    <table class="seating-table" data-table-id="${tableId}">
                                         <thead>
                                             <tr>
                                                 ${plan.headers.map(h => `<th>${h}</th>`).join('')}
@@ -1439,13 +2110,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                             ${plan.matrix.slice(1).map(row => `
                                                 <tr>
                                                     ${row.map(cell => {
-                        if (!cell.student) return `<td class="empty-seat"></td>`;
+                        if (!cell.student) return `<td class="chart-seat empty-seat" draggable="true" title="Drag to rearrange or click to fill seat."></td>`;
 
                         // Handle both old format (string) and new format (object)
                         const enrollmentStr = typeof cell.student === 'object' ? (cell.student.enrollment || '') : cell.student;
                         const nameStr = typeof cell.student === 'object' ? (cell.student.name || '') : '';
 
-                        return `<td>
+                        return `<td class="chart-seat occupied-seat" draggable="true" data-enrollment="${enrollmentStr}" data-name="${nameStr}" data-year="${cell.year}" title="${nameStr ? enrollmentStr + ' - ' + nameStr : enrollmentStr}\nDrag to rearrange.">
                                     <div class="student-id">${enrollmentStr}</div>
                                     <div class="year-badge ${cell.year.replace(' ', '-')}">${cell.year}</div>
                                 </td>`;
@@ -1478,13 +2149,166 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.getElementById('tab-seating').innerHTML = seatingHtml;
 
+        // Call abstracted function to generate and render attendance tabs
+        window.renderAttendanceTabs(data, instituteName, instituteLogoBase64, departmentName, instituteSubheader);
+
+        // Reset to first tab on generation
+        document.querySelector('.tab-btn[data-target="tab-timetable"]').click();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Initialize drag and drop for seating charts
+        setTimeout(initializeDragAndDrop, 100);
+    }
+
+    // --- Drag and Drop Logic ---
+    window.draggedSeat = null;
+
+    function initializeDragAndDrop() {
+        const seats = document.querySelectorAll('.chart-seat');
+
+        // Reset the Buffer Dropzone just in case
+        const bufferDropzone = document.getElementById('buffer-dropzone');
+        const bufferPlaceholder = document.getElementById('buffer-placeholder');
+        if (bufferDropzone) {
+            bufferDropzone.querySelectorAll('.chart-seat').forEach(s => s.remove());
+            if (bufferPlaceholder) bufferPlaceholder.style.display = 'block';
+        }
+
+        seats.forEach(seat => {
+            seat.draggable = true;
+
+            // Remove old listeners to prevent duplication if called multiple times
+            const newSeat = seat.cloneNode(true);
+            seat.parentNode.replaceChild(newSeat, seat);
+
+            newSeat.addEventListener('dragstart', function (e) {
+                if (!window.isEditMode) {
+                    e.preventDefault();
+                    return; // Only allow drag in edit mode
+                }
+                window.draggedSeat = this;
+                e.dataTransfer.effectAllowed = 'move';
+                this.classList.add('dragging');
+            });
+
+            newSeat.addEventListener('dragend', function (e) {
+                this.classList.remove('dragging');
+                document.querySelectorAll('.chart-seat').forEach(s => s.classList.remove('drag-over'));
+                window.draggedSeat = null;
+            });
+
+            newSeat.addEventListener('dragover', function (e) {
+                if (!window.isEditMode) return;
+
+                if (window.draggedSeat && window.draggedSeat !== this) {
+                    // RULES:
+                    // 1. If dragging from buffer tray -> allow drop anywhere.
+                    // 2. If dragging from a table to another table -> only allow if it's the SAME table.
+                    const isFromBuffer = window.draggedSeat.closest('#buffer-dropzone');
+                    const isSameTable = window.draggedSeat.closest('table') === this.closest('table');
+
+                    if (isFromBuffer || isSameTable) {
+                        e.preventDefault();
+                        this.classList.add('drag-over');
+                    }
+                }
+            });
+
+            newSeat.addEventListener('dragleave', function (e) {
+                this.classList.remove('drag-over');
+            });
+
+            newSeat.addEventListener('drop', function (e) {
+                if (!window.isEditMode) return;
+
+                e.preventDefault();
+                this.classList.remove('drag-over');
+
+                if (window.draggedSeat && window.draggedSeat !== this) {
+                    const isFromBuffer = window.draggedSeat.closest('#buffer-dropzone');
+                    const isSameTable = window.draggedSeat.closest('table') === this.closest('table');
+
+                    if (isFromBuffer || isSameTable) {
+                        // Swap inner HTML
+                        const tempHTML = this.innerHTML;
+                        this.innerHTML = window.draggedSeat.innerHTML;
+                        window.draggedSeat.innerHTML = tempHTML;
+
+                        // Swap Data Attributes
+                        const thisDataset = { ...this.dataset };
+                        const draggedDataset = { ...window.draggedSeat.dataset };
+
+                        Object.keys(this.dataset).forEach(k => delete this.dataset[k]);
+                        Object.keys(window.draggedSeat.dataset).forEach(k => delete window.draggedSeat.dataset[k]);
+
+                        Object.keys(draggedDataset).forEach(k => this.dataset[k] = draggedDataset[k]);
+                        Object.keys(thisDataset).forEach(k => window.draggedSeat.dataset[k] = thisDataset[k]);
+
+                        // Swap CSS Classes, preserving the base structural classes
+                        const thisClasses = [...this.classList].filter(c => !['chart-seat', 'dragging', 'drag-over', 'highlight-drop'].includes(c));
+                        const draggedClasses = [...window.draggedSeat.classList].filter(c => !['chart-seat', 'dragging', 'drag-over', 'highlight-drop'].includes(c));
+
+                        this.className = 'chart-seat ' + draggedClasses.join(' ');
+                        window.draggedSeat.className = 'chart-seat ' + thisClasses.join(' ');
+
+                        // Add flash highlight
+                        this.classList.add('highlight-drop');
+                        window.draggedSeat.classList.add('highlight-drop');
+                        setTimeout(() => {
+                            this.classList.remove('highlight-drop');
+                            if (window.draggedSeat) window.draggedSeat.classList.remove('highlight-drop');
+                        }, 500);
+
+                        // If dragged from buffer, check if buffer is now empty to show placeholder
+                        const bufferDropzone = document.getElementById('buffer-dropzone');
+                        if (isFromBuffer && bufferDropzone) {
+                            // The draggedSeat visually became whatever was in 'this' seat.
+                            // If 'this' seat was an empty seat, then we effectively removed a student from the buffer.
+                            // However, since we swapped, the buffer seat now contains the "empty seat".
+                            // This is confusing UI. Let's just destroy the buffer seat if it swapped with an empty seat.
+
+                            if (window.draggedSeat.classList.contains('empty-seat')) {
+                                window.draggedSeat.remove();
+
+                                if (bufferDropzone.querySelectorAll('.chart-seat').length === 0) {
+                                    const bufferPlaceholder = document.getElementById('buffer-placeholder');
+                                    if (bufferPlaceholder) bufferPlaceholder.style.display = 'block';
+                                }
+                            }
+                        }
+
+                        // NOTE: We do NOT sync automatically on drop now!
+                        // We ONLY sync when "Confirm Seating" is clicked!
+                    }
+                }
+            });
+        });
+    }
+
+    // --- Sync DOM and Render Attendance Functions ---
+    window.renderAttendanceTabs = function (data, instituteName, instituteLogoBase64, departmentName, instituteSubheader) {
+        // Read current subheader from DOM if not passed (e.g. from syncSeatingDOMToGlobalData)
+        if (!instituteSubheader) {
+            instituteSubheader = document.getElementById('institute-subheader')?.value.trim() || '';
+        }
+        const buildPrintHeader = (subtitle) => `
+            <div class="print-header" style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 2rem; border-bottom: 3px double var(--border-color); padding-bottom: 1rem;">
+                ${instituteLogoBase64 ? `<img src="${instituteLogoBase64}" alt="Logo" style="max-height: 80px; max-width: 80px; object-fit: contain;">` : ''}
+                <div style="text-align: center;">
+                    <h1 style="font-size: 2rem; margin: 0; color: var(--text-main); text-transform: uppercase; font-family: 'Times New Roman', Times, serif;">${instituteName}</h1>
+                    <p style="margin: 0.15rem 0 0 0; font-size: 1rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">Department of ${departmentName}</p>
+                    ${instituteSubheader ? `<p style="margin: 0.1rem 0 0 0; font-size: 0.9rem; color: var(--text-muted); white-space: pre-line; line-height: 1.5;">${instituteSubheader}</p>` : ''}
+                    <p style="margin: 0.2rem 0 0 0; font-size: 1.2rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">${subtitle}</p>
+                </div>
+            </div>
+        `;
+
         // Build Master Attendance Tab
         let masterAttendanceHtml = `<h1 style="font-size: 2.5rem; color: var(--primary-color); text-align: center; margin-bottom: 2rem;">Master Attendance</h1>`;
         ['I Yr', 'II Yr', 'III Yr', 'IV Yr'].forEach(yr => {
             const students = data.attendance_data[yr] || [];
             const yearExamDates = data.exam_dates_map[yr] || [];
 
-            // Only show master attendance for a year if there are students AND they actually have an exam scheduled
             if (students.length > 0 && yearExamDates.length > 0) {
                 masterAttendanceHtml += `
             <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem;">
@@ -1538,9 +2362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('tab-attendance-master').innerHTML = masterAttendanceHtml;
 
         // Build Room-Wise Attendance Tab
-        // Build Room-Wise Attendance Tab
         let roomAttendanceHtml = `<h1 style="font-size: 2.5rem; color: var(--primary-color); text-align: center; margin-bottom: 2rem;">Room - Wise Attendance</h1>`;
-
         const consolidatedAttendance = {};
 
         if (data.room_attendance_data && data.room_attendance_data.length > 0) {
@@ -1555,7 +2377,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const studentList = studentsByYear[yr];
                     if (studentList.length === 0) return;
 
-                    // Create a deterministic hash string
                     const enrollments = studentList.map(s => typeof s === 'object' ? (s.enrollment || '') : s).join(',');
                     const hashKey = `${roomSheet.room_name}___${yr}___${enrollments}`;
 
@@ -1567,15 +2388,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             sessions: []
                         };
                     }
-                    // Add this date/shift to the sessions array
                     consolidatedAttendance[hashKey].sessions.push({ date: roomSheet.date, shift: roomSheet.shift });
                 });
             });
 
-            // Preserve the exact room order the user entered (UI tile order) — no sorting
             const roomsList = [...new Set(data.room_attendance_data.map(r => r.room_name))];
 
-            // Create pill nav for Rooms (flat tab structure)
             roomAttendanceHtml += `<div class="pill-nav" style="display:flex; justify-content:center; gap:10px; margin-bottom:2rem; flex-wrap:wrap;">`;
             roomsList.forEach((room, i) => {
                 const safeRoom = room.replace(/\s/g, '_');
@@ -1631,15 +2449,137 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 });
 
-                roomAttendanceHtml += `</div>`; // end room panel
+                roomAttendanceHtml += `</div>`;
             });
         } else {
             roomAttendanceHtml += `<p style="text-align:center; color: var(--text-muted);">Generating...</p>`;
         }
         document.getElementById('tab-attendance-room').innerHTML = roomAttendanceHtml;
+    };
 
-        // Reset to first tab on generation
-        document.querySelector('.tab-btn[data-target="tab-timetable"]').click();
-        window.scrollTo(0, 0);
-    }
+    window.syncSeatingDOMToGlobalData = function () {
+        if (!window.globalSeatingData) return;
+
+        const newSeatingPlans = [];
+        const newRoomAttendance = [];
+
+        document.querySelectorAll('#tab-seating .seating-table').forEach(table => {
+            const tableId = table.getAttribute('data-table-id');
+            const meta = window.tableDataMap[tableId] || {};
+            const roomName = meta.room_name;
+            const sessions = meta.sessions || [];
+            const rows = parseInt(meta.rows || 0);
+            const cols = parseInt(meta.cols || 0);
+            const door = meta.door || 'right';
+            const headers = meta.headers || [];
+
+            const matrix = [headers];
+            const tbodyRows = table.querySelectorAll('tbody tr');
+            let totalInRoom = 0;
+            const counts = {};
+
+            tbodyRows.forEach(tr => {
+                const rowData = [];
+                tr.querySelectorAll('td').forEach(td => {
+                    if (td.classList.contains('empty-seat')) {
+                        rowData.push({ student: "" });
+                    } else {
+                        const enrollment = td.dataset.enrollment;
+                        const name = td.dataset.name;
+                        const year = td.dataset.year;
+                        rowData.push({ student: { enrollment, name }, year: year });
+
+                        totalInRoom++;
+                        counts[year] = (counts[year] || 0) + 1;
+                    }
+                });
+                matrix.push(rowData);
+            });
+
+            // Update DOM stats for this seating room visual
+            const statsContainer = table.closest('.glass-card').querySelector('.stats-container');
+            if (statsContainer) {
+                statsContainer.innerHTML = `
+                    <div style="display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap;">
+                        ${Object.entries(counts).map(([yr, count]) => `
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="year-badge ${yr.replace(' ', '-')}"></div>
+                                <span style="color: var(--text-muted);">${yr}: <strong style="color: var(--text-main);">${count}</strong></span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div style="text-align: center; margin-top: 1rem; color: var(--text-main); font-weight: 600;">
+                        Total Students in Room: <span style="color: var(--primary-color);">${totalInRoom} / ${rows * cols} Capacity</span>
+                    </div>
+                `;
+            }
+
+            sessions.forEach(session => {
+                newSeatingPlans.push({
+                    room_name: roomName,
+                    date: session.date,
+                    shift: session.shift,
+                    rows, cols, door,
+                    headers, matrix, counts, total_in_room: totalInRoom
+                });
+
+                const roomStudents = [];
+                matrix.slice(1).forEach(row => {
+                    row.forEach(cell => {
+                        if (cell.student) {
+                            roomStudents.push(cell);
+                        }
+                    });
+                });
+
+                roomStudents.sort((a, b) => {
+                    const yearOrder = { "IV Yr": 1, "III Yr": 2, "II Yr": 3, "I Yr": 4 };
+                    if (yearOrder[a.year] !== yearOrder[b.year]) return (yearOrder[a.year] || 99) - (yearOrder[b.year] || 99);
+                    return String(a.student.enrollment).localeCompare(String(b.student.enrollment), undefined, { numeric: true });
+                });
+
+                newRoomAttendance.push({
+                    room_name: roomName,
+                    date: session.date,
+                    shift: session.shift,
+                    students: roomStudents.map(s => ({ enrollment: s.student.enrollment, name: s.student.name, year: s.year }))
+                });
+            });
+        });
+
+        window.globalSeatingData.seating_plans = newSeatingPlans;
+        window.globalSeatingData.room_attendance_data = newRoomAttendance;
+
+        // Merge into global master attendance to catch manually inserted students
+        const uniqueStudentsByYear = { "I Yr": new Map(), "II Yr": new Map(), "III Yr": new Map(), "IV Yr": new Map() };
+
+        Object.entries(window.globalSeatingData.attendance_data).forEach(([year, students]) => {
+            if (!uniqueStudentsByYear[year]) return;
+            students.forEach(s => {
+                const enroll = typeof s === 'object' ? s.enrollment : s;
+                const name = typeof s === 'object' ? s.name : '';
+                uniqueStudentsByYear[year].set(enroll, { enrollment: enroll, name: name });
+            });
+        });
+
+        newRoomAttendance.forEach(sheet => {
+            sheet.students.forEach(stu => {
+                if (uniqueStudentsByYear[stu.year]) {
+                    uniqueStudentsByYear[stu.year].set(stu.enrollment, stu);
+                }
+            });
+        });
+
+        Object.keys(uniqueStudentsByYear).forEach(year => {
+            const arr = Array.from(uniqueStudentsByYear[year].values());
+            arr.sort((a, b) => String(a.enrollment).localeCompare(String(b.enrollment), undefined, { numeric: true }));
+            window.globalSeatingData.attendance_data[year] = arr;
+        });
+
+        // Re-render attendance tabs with sync'd data
+        const instituteName = document.getElementById('institute-name').value.trim();
+        const departmentName = document.getElementById('department-name').value.trim();
+        window.renderAttendanceTabs(window.globalSeatingData, instituteName, window.lastLogoBase64 || '', departmentName);
+    };
+
 });

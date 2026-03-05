@@ -783,6 +783,84 @@ body {
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* Drag and Drop Seating Styling */
+.chart-seat {
+    cursor: grab;
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.chart-seat:active {
+    cursor: grabbing;
+}
+
+.chart-seat.dragging {
+    opacity: 0.6;
+    transform: scale(0.95);
+    box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+    border: 2px dashed var(--primary-color) !important;
+    z-index: 10;
+}
+
+.chart-seat.drag-over {
+    background: rgba(217, 70, 239, 0.15) !important;
+    border: 2px dashed var(--accent-color) !important;
+    transform: scale(1.03);
+}
+
+.highlight-drop {
+    animation: dropFlash 0.5s ease-out;
+}
+
+/* === BUFFER EDIT MODE STYLES === */
+.seating-table.edit-mode-active {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 4px;
+    border-radius: 4px;
+    animation: editPulse 2s infinite ease-in-out;
+}
+
+@keyframes editPulse {
+
+    0%,
+    100% {
+        outline-color: var(--accent-color);
+    }
+
+    50% {
+        outline-color: var(--primary-color);
+    }
+}
+
+.drag-over-buffer {
+    background: rgba(217, 70, 239, 0.08) !important;
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 12px rgba(217, 70, 239, 0.25);
+}
+
+/* Buffer tray seat cards */
+#buffer-dropzone .chart-seat {
+    flex-shrink: 0;
+    min-width: 120px;
+    max-width: 160px;
+    border: 2px dashed var(--accent-color) !important;
+    cursor: grab;
+}
+
+#buffer-dropzone .chart-seat:active {
+    cursor: grabbing;
+}
+
+@keyframes dropFlash {
+    0% {
+        background-color: rgba(16, 185, 129, 0.5);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
 .student-id {
     font-weight: 600;
     color: var(--text-main);

@@ -34,6 +34,10 @@
                 style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border-color); cursor: pointer; color: var(--primary-color); font-size: 1.25rem; transition: all 0.2s;">
                 <i class="fa-solid fa-circle-question"></i>
             </button>
+            <button id="history-btn" aria-label="Configuration History"
+                style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border-color); cursor: pointer; color: var(--primary-color); font-size: 1.25rem; transition: all 0.2s;">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </button>
         </div>
 
         <header class="hero-section fade-in">
@@ -56,6 +60,25 @@
                         value="IPS Academy, Institute of Engineering and Science">
                     <label for="institute-name">Institute Name (For Print Header)</label>
                     <i class="fa-solid fa-university input-icon"></i>
+                </div>
+                <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 0.4rem;">
+                    <label for="institute-subheader"
+                        style="font-size: 0.78rem; font-weight: 600; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fa-solid fa-location-dot"></i> Address / Contact
+                        <span
+                            style="font-size: 0.7rem; font-weight: 400; color: var(--text-muted); text-transform: none; letter-spacing: 0;">—
+                            shown under name in print header</span>
+                    </label>
+                    <div style="position: relative;">
+                        <textarea id="institute-subheader" rows="3"
+                            style="width: 100%; box-sizing: border-box; background: rgba(139,92,246,0.04); border: 1.5px solid rgba(139,92,246,0.3); border-radius: 12px; padding: 0.75rem 0.85rem 0.75rem 2.5rem; font-family: inherit; font-size: 0.92rem; color: var(--text-main); resize: vertical; transition: border-color 0.2s, box-shadow 0.2s; outline: none; line-height: 1.6;"
+                            onfocus="this.style.borderColor='var(--primary-color)'; this.style.boxShadow='0 0 0 3px rgba(139,92,246,0.15)';"
+                            onblur="this.style.borderColor='rgba(139,92,246,0.3)'; this.style.boxShadow='none';">Rajendra Nagar, A.B. Road, Indore 452012
+Tele fax0731-4014602  Phone: 4014645, 4014652
+E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
+                        <i class="fa-solid fa-location-dot"
+                            style="position: absolute; left: 0.8rem; top: 0.85rem; color: var(--primary-color); font-size: 0.85rem; pointer-events: none;"></i>
+                    </div>
                 </div>
                 <div class="input-wrapper floating-label" style="grid-column: span 2;">
                     <input type="file" id="institute-logo" accept="image/png, image/jpeg">
@@ -316,6 +339,17 @@
                 <button id="back-to-config" class="btn outline-btn"><i class="fa-solid fa-arrow-left"></i> Back to
                     Config</button>
                 <div style="flex:1"></div>
+                <button id="edit-seating-btn" class="btn outline-btn"
+                    style="color: var(--accent-color); border-color: var(--accent-color);">
+                    <i class="fa-solid fa-pen-to-square"></i> Edit Seating
+                </button>
+                <button id="confirm-seating-btn" class="btn primary-btn hidden"
+                    style="background: var(--accent-color); color: white;">
+                    <i class="fa-solid fa-check"></i> Confirm Seating
+                </button>
+                <button id="add-room-btn" class="btn outline-btn"
+                    style="color: var(--accent-color); border-color: var(--accent-color);"><i
+                        class="fa-solid fa-plus"></i> Add Room</button>
                 <button id="export-excel-btn" class="btn outline-btn" style="color: #10B981; border-color: #10B981;"><i
                         class="fa-solid fa-file-excel"></i> Export Excel</button>
                 <button id="print-btn" class="btn primary-btn"><i class="fa-solid fa-file-pdf"></i> Print / Save as
@@ -423,6 +457,152 @@
             </div>
         </div>
 
+        <!-- ===== HISTORY MODAL ===== -->
+        <div id="history-modal"
+            style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); overflow-y:auto; padding:2rem 1rem;">
+            <div
+                style="max-width:600px; margin:auto; background:var(--bg-card); border:1px solid var(--border-color); border-radius:18px; padding:2rem; position:relative; box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+                <button id="history-close-btn"
+                    style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;"
+                    aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div style="text-align:center; margin-bottom:1.8rem;">
+                    <div style="font-size:2.8rem;">🕒</div>
+                    <h2 style="margin:0.4rem 0 0.2rem; color:var(--primary-color); font-size:1.5rem;">Recent
+                        Configurations</h2>
+                    <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">Restore a previously generated
+                        seating setup (Last 4 saved).</p>
+                </div>
+                <div id="history-list-container" style="display:flex; flex-direction:column; gap:0.9rem;">
+                    <!-- Dynamically populated presets go here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== FILL EMPTY SEAT MODAL ===== -->
+        <div id="fill-seat-modal"
+            style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); overflow-y:auto; padding:2rem 1rem;">
+            <div
+                style="max-width:400px; margin:auto; background:var(--bg-card); border:1px solid var(--border-color); border-radius:18px; padding:2rem; position:relative; box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+                <button id="fill-seat-close-btn"
+                    style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;"
+                    aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div style="text-align:center; margin-bottom:1.8rem;">
+                    <div style="font-size:2.8rem; color: var(--primary-color);"><i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    <h2 style="margin:0.4rem 0 0.2rem; color:var(--text-main); font-size:1.5rem;">Fill Empty Seat</h2>
+                    <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">Add a student to this seat
+                        manually.</p>
+                </div>
+
+                <form id="fill-seat-form" style="display:flex; flex-direction:column; gap:1rem;">
+                    <div class="input-wrapper floating-label">
+                        <input type="text" id="fill-seat-enrollment" placeholder=" " required autocomplete="off">
+                        <label for="fill-seat-enrollment">Enrollment / Roll No.</label>
+                        <i class="fa-solid fa-id-card input-icon"></i>
+                    </div>
+                    <div class="input-wrapper floating-label">
+                        <input type="text" id="fill-seat-name" placeholder=" " autocomplete="off">
+                        <label for="fill-seat-name">Student Name (Optional)</label>
+                        <i class="fa-solid fa-user input-icon"></i>
+                    </div>
+                    <div class="input-wrapper floating-label">
+                        <select id="fill-seat-year" required>
+                            <option value="I Yr">I Year</option>
+                            <option value="II Yr">II Year</option>
+                            <option value="III Yr">III Year</option>
+                            <option value="IV Yr">IV Year</option>
+                            <option value="Custom" style="font-style: italic;">Need Custom? Use subject-code mapping
+                                instead</option>
+                        </select>
+                        <label for="fill-seat-year">Select Year</label>
+                        <i class="fa-solid fa-graduation-cap input-icon"></i>
+                    </div>
+                    <button type="submit" class="btn primary-btn" style="width: 100%; margin-top: 0.5rem;">Add
+                        Student</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ===== ADD ROOM MODAL ===== -->
+        <div id="add-room-modal"
+            style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); overflow-y:auto; padding:2rem 1rem;">
+            <div
+                style="max-width:800px; margin:auto; background:var(--bg-card); border:1px solid var(--border-color); border-radius:18px; padding:2rem; position:relative; box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+                <button id="add-room-close-btn"
+                    style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;"
+                    aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div style="text-align:center; margin-bottom:1.8rem;">
+                    <div style="font-size:2.8rem; color: var(--accent-color);"><i class="fa-solid fa-person-booth"></i>
+                    </div>
+                    <h2 style="margin:0.4rem 0 0.2rem; color:var(--text-main); font-size:1.5rem;">Add Extra Room</h2>
+                    <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">Configure seating for an additional
+                        room post-generation.</p>
+                </div>
+
+                <form id="add-room-form">
+                    <div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">Room Dimensions</h4>
+                        <div class="input-stack">
+                            <div class="input-wrapper floating-label">
+                                <input type="text" id="add-room-name" placeholder=" " required value="Extra Room 1">
+                                <label>Room Name</label>
+                                <i class="fa-solid fa-door-closed input-icon"></i>
+                            </div>
+                            <div class="input-wrapper floating-label" style="min-width:120px; flex:0.4;">
+                                <input type="number" id="add-room-rows" placeholder=" " required min="1" max="20"
+                                    value="6">
+                                <label>Rows</label>
+                                <i class="fa-solid fa-arrows-up-down input-icon"></i>
+                            </div>
+                            <div class="input-wrapper floating-label" style="min-width:120px; flex:0.4;">
+                                <input type="number" id="add-room-cols" placeholder=" " required min="1" max="20"
+                                    value="6">
+                                <label>Cols</label>
+                                <i class="fa-solid fa-arrows-left-right input-icon"></i>
+                            </div>
+                            <div class="input-wrapper floating-label" style="flex:0.8;">
+                                <select id="add-room-pattern" required>
+                                    <option value="A-B-C-D">Mixed A-B-C-D</option>
+                                    <option value="A-B-A-B">Mixed A-B-A-B</option>
+                                    <option value="C-D-C-D">Mixed C-D-C-D</option>
+                                    <option value="A-B-C">Mixed A-B-C</option>
+                                    <option value="Single Year">Single Year Only</option>
+                                </select>
+                                <label>Pattern</label>
+                                <i class="fa-solid fa-layer-group input-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">Student Data <span
+                                style="font-size: 0.75rem; background: rgba(16,185,129,0.15); color: #10B981; padding: 2px 8px; border-radius: 6px; font-weight: 500;">Optional</span>
+                        </h4>
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Upload an Excel
+                            file to pre-populate students in this room. Or leave it empty — you can always drag students
+                            in from the <strong>Swap Buffer</strong> after generation!</p>
+                        <div class="input-stack" style="align-items: flex-end;">
+                            <div class="input-wrapper" style="flex: 2;">
+                                <i class="fa-solid fa-file-excel input-icon"></i>
+                                <input type="file" id="add-room-student-file" accept=".xlsx, .xls">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn accent-btn" id="generate-extra-room-btn" style="width: 100%;"><i
+                            class="fa-solid fa-wand-magic-sparkles"></i> Generate Sub-Chart & Append</button>
+                    <div id="add-room-error" class="error-msg"
+                        style="display:none; margin-top:1rem; text-align:center; justify-content:center;"></div>
+                </form>
+            </div>
+        </div>
+
         <!-- ===== HELP MODAL ===== -->
         <div id="help-modal"
             style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); overflow-y:auto; padding:2rem 1rem;">
@@ -437,7 +617,7 @@
                     <div style="font-size:2.8rem;">📋</div>
                     <h2 style="margin:0.4rem 0 0.2rem; color:var(--primary-color); font-size:1.5rem;">How to Use — Exam
                         Seating Manager</h2>
-                    <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">Follow these 5 steps to generate
+                    <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">Follow these 7 steps to generate
                         seating charts, timetables &amp; attendance sheets.</p>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:0.9rem;">
@@ -449,8 +629,11 @@
                             <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 1 — Base
                                 Configuration</strong>
                             <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
-                                Enter <b>Institute Name</b>, upload optional <b>Logo</b>, select <b>Department</b> &amp;
-                                <b>MID SEM</b> number.<br>
+                                Enter <b>Institute Name</b> (shown as heading on all printed pages).<br>
+                                The <b>Address / Contact</b> text box below it adds address/contact lines under the name
+                                in every header (default: IPS Academy address).<br>
+                                Upload optional <b>Institute Logo</b>, select <b>Department</b> &amp; <b>MID SEM</b>
+                                number.<br>
                                 Choose <b>Subject Source</b>:
                                 <br>• <b>Upload Excel</b> — Row 1 = headers (I Yr, II Yr…), data starts row 2.<br>
                                 • <b>Manual Entry</b> — Comma-separated codes per year.<br>
@@ -466,12 +649,10 @@
                             <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 2 — Master
                                 Timetable Builder</strong>
                             <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
-                                Set <b>Exam Duration</b> — End Time auto-fills from Start Time.<br>
                                 Click <b>Add Another Date</b>, then for each date → <b>Add a Shift</b>:<br>
                                 • Set Start Time (End Time auto-fills).<br>
-                                • Check the years appearing in this shift &amp; pick their subject code.<br>
-                                • A subject used in one shift is disabled in all others. Years with all subjects
-                                exhausted are disabled automatically.
+                                • Check the years in this shift &amp; pick their subject code.<br>
+                                • A subject used in one shift is disabled in all others automatically.
                             </p>
                         </div>
                     </div>
@@ -480,13 +661,13 @@
                         style="display:flex; gap:1rem; align-items:flex-start; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.25); border-radius:12px; padding:1rem;">
                         <div style="font-size:1.8rem; min-width:2.4rem; text-align:center;">🏫</div>
                         <div>
-                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 3 — Layout
-                                Configuration</strong>
+                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 3 — Room
+                                Layout Configuration</strong>
                             <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
                                 Enter <b>Number of Rooms</b> → click <b>Configure Rooms</b>.<br>
-                                For each room: edit <b>Room Name</b> (auto-increments: N001→N002), set <b>Rows</b> &amp;
-                                <b>Columns</b>, choose <b>Year Pattern</b>.<br>
-                                Use <b>Batch Configuration</b> to apply same settings to multiple rooms at once.
+                                For each room: edit <b>Room Name</b> (auto-increments N101→N102), set <b>Rows</b> &amp;
+                                <b>Columns</b>, choose <b>Year Pattern</b> and <b>Entry Door</b>.<br>
+                                Use <b>Batch Configuration</b> to apply the same settings to multiple rooms at once.
                             </p>
                         </div>
                     </div>
@@ -499,9 +680,52 @@
                                 Generate</strong>
                             <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
                                 Click <b>Generate Timetable, Seating &amp; Attendance</b>.<br>
-                                The system distributes students so no two of the same year sit in adjacent columns. It
-                                outputs: <b>Master Timetable</b>, <b>Room Seating Charts</b>, <b>Master Attendance</b>,
-                                and <b>Room-wise Attendance</b>.
+                                Students are distributed so no two of the same year sit in adjacent columns. Four tabs
+                                are generated: <b>Master Timetable</b>, <b>Seating Charts</b>, <b>Master Attendance</b>,
+                                and <b>Room-Wise Attendance</b>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div
+                        style="display:flex; gap:1rem; align-items:flex-start; background:rgba(217,70,239,0.08); border:1px solid rgba(217,70,239,0.3); border-radius:12px; padding:1rem;">
+                        <div style="font-size:1.8rem; min-width:2.4rem; text-align:center;">✏️</div>
+                        <div>
+                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 5 — Edit
+                                Seating <span
+                                    style="font-size:0.75rem; background:rgba(217,70,239,0.15); color:#d946ef; padding:2px 7px; border-radius:5px; font-weight:500;">Seating
+                                    Charts tab only</span></strong>
+                            <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
+                                Click <b>✏️ Edit Seating</b> to unlock the layout. A <b>Swap Buffer</b> tray slides up
+                                from the bottom.<br>
+                                • <b>Same room:</b> Drag a seat and drop it directly onto another seat in the same room
+                                — they swap instantly.<br>
+                                • <b>Different room:</b> Drag a student to the <b>Swap Buffer</b>, switch to the target
+                                room tab, then drag the card from the buffer onto the target seat.<br>
+                                • Click <b>✕</b> on a buffer card to return just that student to their original empty
+                                seat.<br>
+                                • Click <b>↺ Cancel Changes</b> to revert <em>all</em> edits and restore the full layout
+                                to its pre-edit state.<br>
+                                • When the buffer is <b>empty</b>, click <b>✔ Confirm Seating</b> to lock the layout and
+                                refresh all attendance sheets.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div
+                        style="display:flex; gap:1rem; align-items:flex-start; background:rgba(217,70,239,0.08); border:1px solid rgba(217,70,239,0.3); border-radius:12px; padding:1rem;">
+                        <div style="font-size:1.8rem; min-width:2.4rem; text-align:center;">🚪</div>
+                        <div>
+                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 6 — Add
+                                Extra Room <span
+                                    style="font-size:0.75rem; background:rgba(217,70,239,0.15); color:#d946ef; padding:2px 7px; border-radius:5px; font-weight:500;">Seating
+                                    Charts tab only</span></strong>
+                            <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
+                                Click <b>+ Add Room</b> to append a new room post-generation.<br>
+                                Set its name, rows, columns, and seating pattern.<br>
+                                <b>Student data is optional</b> — leave the file upload empty to create a blank room,
+                                then populate it by dragging students in from the <b>Swap Buffer</b> via Edit Seating
+                                mode.
                             </p>
                         </div>
                     </div>
@@ -510,13 +734,13 @@
                         style="display:flex; gap:1rem; align-items:flex-start; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.25); border-radius:12px; padding:1rem;">
                         <div style="font-size:1.8rem; min-width:2.4rem; text-align:center;">📤</div>
                         <div>
-                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 5 —
+                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 7 —
                                 Export</strong>
                             <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
-                                Switch between result tabs, then:<br>
-                                • <b>Export Excel</b> — Downloads active tab as a named <code>.xlsx</code>.<br>
-                                • <b>Print / Save as PDF</b> — Opens print dialog with correct filename. Room charts fit
-                                one-per-page for printing &amp; display.
+                                Switch to the tab you want to export, then:<br>
+                                • <b>Export Excel</b> — Downloads the active tab as a named <code>.xlsx</code> file.<br>
+                                • <b>Print / Save as PDF</b> — Opens print dialog with a descriptive filename. Room
+                                charts fit one-per-page.
                             </p>
                         </div>
                     </div>
@@ -530,6 +754,90 @@
         </div>
 
     </main>
+
+    <!-- ===== DRAG BUFFER TRAY ===== -->
+    <div id="drag-buffer" class="hidden"
+        style="position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-card); border-top: 2px solid var(--accent-color); padding: 1rem; z-index: 9998; box-shadow: 0 -4px 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: var(--text-main); font-size: 1.1rem;"><i class="fa-solid fa-inbox"
+                    style="color: var(--accent-color);"></i> Swap Buffer</h3>
+            <span id="buffer-warning" class="error-msg hidden"
+                style="background: rgba(239, 68, 68, 0.1); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.9rem;">Buffer
+                must be empty to confirm seating!</span>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span style="font-size: 0.85rem; color: var(--text-muted);"><i class="fa-solid fa-circle-info"></i> Drag
+                    students here to move them across rooms. Close (✕) a card to return student to their original
+                    seat.</span>
+                <button id="cancel-seating-btn" class="btn outline-btn"
+                    style="color: var(--error-color); border-color: var(--error-color); padding: 0.4rem 0.9rem; font-size: 0.9rem;">
+                    <i class="fa-solid fa-rotate-left"></i> Cancel Changes
+                </button>
+            </div>
+        </div>
+        <div id="buffer-dropzone"
+            style="min-height: 80px; border: 2px dashed var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: flex-start; gap: 10px; overflow-x: auto; padding: 10px; transition: all 0.2s ease;">
+            <span id="buffer-placeholder"
+                style="color: var(--text-muted); opacity: 0.7; pointer-events: none; margin: auto;">Drop seats
+                here</span>
+        </div>
+    </div>
+
+    <!-- ===== BACK TO TOP BUTTON ===== -->
+    <button id="back-to-top-btn" title="Back to top" style="
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9997;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: #fff;
+            box-shadow: 0 4px 18px rgba(139,92,246,0.45);
+            opacity: 0;
+            transform: translateY(12px);
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease, bottom 0.3s ease, box-shadow 0.2s;
+        "
+        onmouseover="this.style.boxShadow='0 6px 24px rgba(139,92,246,0.65)'; this.style.transform='translateY(0) scale(1.08)';"
+        onmouseout="this.style.boxShadow='0 4px 18px rgba(139,92,246,0.45)'; this.style.transform='translateY(0) scale(1)';">
+        <i class="fa-solid fa-chevron-up"></i>
+    </button>
+
+    <script>
+        (function () {
+            const btn = document.getElementById('back-to-top-btn');
+            const buffer = document.getElementById('drag-buffer');
+
+            function updateBtnPosition() {
+                // Shift up if the buffer tray is visible so they don't overlap
+                const bufferVisible = buffer && !buffer.classList.contains('hidden');
+                btn.style.bottom = bufferVisible ? 'calc(140px + 1.5rem)' : '2rem';
+            }
+
+            window.addEventListener('scroll', () => {
+                const visible = window.scrollY > 300;
+                btn.style.opacity = visible ? '1' : '0';
+                btn.style.transform = visible ? 'translateY(0)' : 'translateY(12px)';
+                btn.style.pointerEvents = visible ? 'auto' : 'none';
+                updateBtnPosition();
+            });
+
+            btn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Also update position whenever edit mode toggles buffer visibility
+            const observer = new MutationObserver(updateBtnPosition);
+            if (buffer) observer.observe(buffer, { attributes: true, attributeFilter: ['class'] });
+        })();
+    </script>
 
     <script src="{% static 'seat_manager/script_v2.js' %}"></script>
 </body>

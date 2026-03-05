@@ -55,12 +55,13 @@ def generate_seating(request):
     try:
         # 1. Extract data from request
         student_file = request.FILES.get('student_file')
+        student_data_str = request.POST.get('student_data')
         branch_name = request.POST.get('branch_name', 'Unknown Branch')
         schedule_config_str = request.POST.get('schedule_config', '[]')
         room_config_str = request.POST.get('room_config', '[]')
 
-        if not student_file:
-            return JsonResponse({'error': 'No student file uploaded.'}, status=400)
+        if not student_file and not student_data_str:
+            return JsonResponse({'error': 'No student file or data provided.'}, status=400)
             
         try:
             rooms = json.loads(room_config_str)
@@ -71,72 +72,60 @@ def generate_seating(request):
         if not rooms or not sessions:
             return JsonResponse({'error': 'Missing rooms or exam sessions.'}, status=400)
 
-        # 2. Read Student Data (Excel OR Manual)
         year_master = {"I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": []}
-        
-        # Check if they went with manual inputs (in a real scenario we'd pass JSON, but UI logic currently leaves student_file required on Excel mode)
-        # Based on index.html: manual inputs aren't sent directly via a text field in FormData yet!
-        # wait, let me look at script_v2.js. Did I append the manual lists?
-        # Ah, script_v2 just reads the `studentFile` still regardless. The *Subject* codes are manually read. The student list is still excel!
-        # The user requested "subject code shoud have option for both upload from excel as well as manually fill Subject code".
-        # Yes! The UI generates the JSON payload `schedule_config` which *already* contains the selected subject codes. The backend NEVER read the subjects excel file anyway, it only reads `student_file` to get enrollments.
-        # So the backend data ingest `pd.read_excel(student_file)` requires NO change for the manual subject feature!
-        
-        df = pd.read_excel(student_file)
-        
-        # Columns mapped to I, II, III, IV Year
-        year_master = {"I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": []}
-        try:
-            # Check the first row (headers) of each column to identify the year
-            # The new format expects columns like "Enrollment No. (II Year)" and "Student Name (II Year)"
-            # Let's map years based on keywords. If a user uploads the old one-column format, we should still handle it.
-            
-            years_to_check = [("I ", "I Yr", "1 "), ("II ", "II Yr", "2 "), ("III ", "III Yr", "3 "), ("IV ", "IV Yr", "4 ")]
-            
-            for keyword, y_key, alt_key in years_to_check:
-                enrollment_col = None
-                name_col = None
+
+        if student_data_str:
+            try:
+                parsed_data = json.loads(student_data_str)
+                for year, students in parsed_data.items():
+                    if year in year_master:
+                        year_master[year] = students
+            except Exception as e:
+                return JsonResponse({'error': 'Failed to parse JSON student data.'}, status=400)
+        else:
+            try:
+                df = pd.read_excel(student_file)
+                years_to_check = [("I ", "I Yr", "1 "), ("II ", "II Yr", "2 "), ("III ", "III Yr", "3 "), ("IV ", "IV Yr", "4 ")]
                 
-                # First try to find explicit Enrollment and Name columns for this year
-                for col in df.columns:
-                    col_str = str(col).strip().upper()
-                    if (keyword in col_str or alt_key in col_str):
-                        if "NAME" in col_str:
-                            name_col = col
-                        elif "ENROLLMENT" in col_str or "ENROL" in col_str or "NO" in col_str:
-                            enrollment_col = col
-                
-                # If we couldn't find explicit Enrollment/Name distinction, maybe it's the old format (just one column per year)
-                if enrollment_col is None and name_col is None:
-                    # just grab the first column that matches the year
+                for keyword, y_key, alt_key in years_to_check:
+                    enrollment_col = None
+                    name_col = None
+                    
                     for col in df.columns:
                         col_str = str(col).strip().upper()
                         if (keyword in col_str or alt_key in col_str):
-                            enrollment_col = col
-                            break
-                            
-                if enrollment_col is not None:
-                    # Extract Data
-                    for idx, row in df.iterrows():
-                        enrollment = str(row[enrollment_col]).strip()
-                        if pd.isna(row[enrollment_col]) or not enrollment or enrollment.lower() == 'nan':
-                            continue
-                            
-                        # Default name to empty string if not found or the old format is used
-                        student_name = ""
-                        if name_col is not None:
-                            val = row[name_col]
-                            if pd.notna(val) and str(val).lower() != 'nan':
-                                student_name = str(val).strip()
+                            if "NAME" in col_str:
+                                name_col = col
+                            elif "ENROLLMENT" in col_str or "ENROL" in col_str or "NO" in col_str:
+                                enrollment_col = col
+                    
+                    if enrollment_col is None and name_col is None:
+                        for col in df.columns:
+                            col_str = str(col).strip().upper()
+                            if (keyword in col_str or alt_key in col_str):
+                                enrollment_col = col
+                                break
                                 
-                        year_master[y_key].append({
-                            'enrollment': enrollment,
-                            'name': student_name
-                        })
+                    if enrollment_col is not None:
+                        for idx, row in df.iterrows():
+                            enrollment = str(row[enrollment_col]).strip()
+                            if pd.isna(row[enrollment_col]) or not enrollment or enrollment.lower() == 'nan':
+                                continue
+                                
+                            student_name = ""
+                            if name_col is not None:
+                                val = row[name_col]
+                                if pd.notna(val) and str(val).lower() != 'nan':
+                                    student_name = str(val).strip()
+                                    
+                            year_master[y_key].append({
+                                'enrollment': enrollment,
+                                'name': student_name
+                            })
 
-        except Exception as e:
-            print(f"Error parsing excel: {e}")
-            pass
+            except Exception as e:
+                print(f"Error parsing excel: {e}")
+                pass
 
         # 3. Validation per Session
         total_capacity = sum(int(r.get('rows', 0)) * int(r.get('cols', 0)) for r in rooms)
