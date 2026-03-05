@@ -940,6 +940,20 @@ body {
     }
 }
 
+@keyframes devFloatPulse {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+
+
 /* Focus and Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

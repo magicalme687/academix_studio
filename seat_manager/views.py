@@ -1,5 +1,6 @@
 import json
 import math
+import re
 import pandas as pd
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -85,47 +86,96 @@ def generate_seating(request):
         else:
             try:
                 df = pd.read_excel(student_file)
-                years_to_check = [("I ", "I Yr", "1 "), ("II ", "II Yr", "2 "), ("III ", "III Yr", "3 "), ("IV ", "IV Yr", "4 ")]
-                
-                for keyword, y_key, alt_key in years_to_check:
-                    enrollment_col = None
-                    name_col = None
-                    
-                    for col in df.columns:
-                        col_str = str(col).strip().upper()
-                        if (keyword in col_str or alt_key in col_str):
-                            if "NAME" in col_str:
-                                name_col = col
-                            elif "ENROLLMENT" in col_str or "ENROL" in col_str or "NO" in col_str:
-                                enrollment_col = col
-                    
-                    if enrollment_col is None and name_col is None:
-                        for col in df.columns:
-                            col_str = str(col).strip().upper()
-                            if (keyword in col_str or alt_key in col_str):
-                                enrollment_col = col
-                                break
-                                
-                    if enrollment_col is not None:
-                        for idx, row in df.iterrows():
-                            enrollment = str(row[enrollment_col]).strip()
-                            if pd.isna(row[enrollment_col]) or not enrollment or enrollment.lower() == 'nan':
-                                continue
-                                
-                            student_name = ""
-                            if name_col is not None:
-                                val = row[name_col]
-                                if pd.notna(val) and str(val).lower() != 'nan':
-                                    student_name = str(val).strip()
-                                    
-                            year_master[y_key].append({
-                                'enrollment': enrollment,
-                                'name': student_name
-                            })
+
+                # --- Robust column detection for Format A ---
+                # Each year must match uniquely. We use regex anchored at start of
+                # the column name so "I" never accidentally matches "II" or "III".
+                #
+                # Year patterns (roman & numeric aliases, anchored at start):
+                #   I Yr  → ^I\b  or  ^1\b  (but NOT ^II or ^III or ^IV)
+                #   II Yr → ^II\b or ^2\b  (but NOT ^III)
+                #   III Yr→ ^III\b or ^3\b
+                #   IV Yr → ^IV\b or ^4\b
+                #
+                # A column belongs to a year if its normalised name STARTS WITH
+                # the year prefix followed by a non-alpha character.
+
+                # Year patterns tested in longest-first order (IV before III before II before I)
+                # so that 'II' is never confused with 'I' etc.
+                # We use re.search (not match) because year appears anywhere in the column name,
+                # e.g. "Enrollment No. (II Year)" — the year is inside parentheses.
+                YEAR_PATTERNS = [
+                    ("IV Yr",  [r'\bIV\b',   r'\bFOURTH\b',  r'\b4TH\b']),
+                    ("III Yr", [r'\bIII\b',  r'\bTHIRD\b',   r'\b3RD\b']),
+                    ("II Yr",  [r'\bII\b',   r'\bSECOND\b',  r'\b2ND\b']),
+                    ("I Yr",   [r'\bI\b',    r'\bFIRST\b',   r'\b1ST\b']),
+                ]
+
+                def year_of_col(col_str_upper):
+                    """Return the year key for a normalised column name, or None."""
+                    for y_key, patterns in YEAR_PATTERNS:
+                        for pat in patterns:
+                            if re.search(pat, col_str_upper):
+                                return y_key
+                    return None
+
+                # Build a map: year -> {enrollment_col, name_col}
+                year_col_map = {y: {'enroll': None, 'name': None} for y, _ in YEAR_PATTERNS}
+
+                for col in df.columns:
+                    col_str = str(col).strip().upper()
+                    y_key = year_of_col(col_str)
+                    if y_key is None:
+                        continue
+                    is_name_col   = bool(re.search(r'\bNAME\b', col_str))
+                    is_enroll_col = bool(re.search(r'ENROLL|ENROL|\bNO\.?\b|\bROLL\b|\bID\b|\bREG\b', col_str))
+
+                    if is_name_col and year_col_map[y_key]['name'] is None:
+                        year_col_map[y_key]['name'] = col
+                    elif is_enroll_col and year_col_map[y_key]['enroll'] is None:
+                        year_col_map[y_key]['enroll'] = col
+                    elif not is_name_col and year_col_map[y_key]['enroll'] is None and year_col_map[y_key]['name'] is None:
+                        # Generic year column — treat as enrollment fallback
+                        year_col_map[y_key]['enroll'] = col
+
+                print("[Excel Parser] Column map detected:", {k: v for k, v in year_col_map.items()})
+
+                for y_key, cols in year_col_map.items():
+                    enrollment_col = cols['enroll']
+                    name_col       = cols['name']
+
+                    # If only a name column was found, use it as enrollment
+                    if enrollment_col is None and name_col is not None:
+                        enrollment_col = name_col
+                        name_col = None
+
+                    if enrollment_col is None:
+                        continue
+
+                    for idx, row in df.iterrows():
+                        val = row[enrollment_col]
+                        if pd.isna(val):
+                            continue
+                        enrollment = str(val).strip()
+                        if not enrollment or enrollment.lower() == 'nan':
+                            continue
+
+                        student_name = ""
+                        if name_col is not None:
+                            nval = row[name_col]
+                            if pd.notna(nval) and str(nval).lower() != 'nan':
+                                student_name = str(nval).strip()
+
+                        year_master[y_key].append({
+                            'enrollment': enrollment,
+                            'name': student_name
+                        })
+
+                print("[Excel Parser] Students loaded per year:", {k: len(v) for k, v in year_master.items()})
 
             except Exception as e:
+                import traceback; traceback.print_exc()
                 print(f"Error parsing excel: {e}")
-                pass
 
         # 3. Validation per Session
         total_capacity = sum(int(r.get('rows', 0)) * int(r.get('cols', 0)) for r in rooms)
@@ -229,16 +279,29 @@ def generate_seating(request):
                                             placed = True
                                             break
                                             
-                            # Fallback: if we absolutely must place side-by-side because no other isolated option exists
-                            # *But*, if we explicitly decided to keep empty columns (like when only 1 year is left), don't do this fallback.
-                            if not placed and len([y for y, lst in session_year_dict.items() if len(lst) > 0]) > 1:
-                                for alt_year in ["IV Yr", "III Yr", "II Yr", "I Yr"]:
-                                    if session_year_dict.get(alt_year) and len(session_year_dict[alt_year]) > 0:
-                                        student = session_year_dict[alt_year].pop(0)
-                                        seating[row][col] = student
-                                        year_map[row][col] = alt_year
-                                        placed = True
-                                        break
+                            # Fallback: try non-adjacent first, then allow side-by-side
+                            # only when truly no other option exists (single year left).
+                            if not placed:
+                                remaining_years = [y for y, lst in session_year_dict.items() if len(lst) > 0]
+                                if len(remaining_years) > 1:
+                                    # Still multiple years — prefer non-adjacent
+                                    for alt_year in ["IV Yr", "III Yr", "II Yr", "I Yr"]:
+                                        if session_year_dict.get(alt_year) and len(session_year_dict[alt_year]) > 0:
+                                            if alt_year != left_year:  # honour no-side-by-side rule
+                                                student = session_year_dict[alt_year].pop(0)
+                                                seating[row][col] = student
+                                                year_map[row][col] = alt_year
+                                                placed = True
+                                                break
+                                # Absolute last resort: only one year left or completely stuck
+                                if not placed:
+                                    for alt_year in ["IV Yr", "III Yr", "II Yr", "I Yr"]:
+                                        if session_year_dict.get(alt_year) and len(session_year_dict[alt_year]) > 0:
+                                            student = session_year_dict[alt_year].pop(0)
+                                            seating[row][col] = student
+                                            year_map[row][col] = alt_year
+                                            placed = True
+                                            break
                                         
                     # Build matrices for UI
                     room_seating_matrix = []
