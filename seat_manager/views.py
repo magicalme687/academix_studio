@@ -293,10 +293,17 @@ def generate_seating(request):
                                                 year_map[row][col] = alt_year
                                                 placed = True
                                                 break
-                                # Absolute last resort: only one year left or completely stuck
+                                # Absolute last resort: only one year left OR completely stuck.
+                                # STRICT RULE: if only 1 year remains and placing it here would
+                                # create a same-year adjacency, leave this seat EMPTY.
+                                # The un-placed student stays in the queue and will land in the
+                                # next non-adjacent column, producing alternating empty columns.
                                 if not placed:
+                                    remaining_abs = [y for y, lst in session_year_dict.items() if len(lst) > 0]
                                     for alt_year in ["IV Yr", "III Yr", "II Yr", "I Yr"]:
                                         if session_year_dict.get(alt_year) and len(session_year_dict[alt_year]) > 0:
+                                            if len(remaining_abs) == 1 and alt_year == left_year:
+                                                break  # leave seat empty — no-adjacent rule takes priority
                                             student = session_year_dict[alt_year].pop(0)
                                             seating[row][col] = student
                                             year_map[row][col] = alt_year
