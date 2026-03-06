@@ -140,6 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
         dragBufferTray.classList.add('hidden');
         editSeatingBtn.classList.remove('hidden');
         document.querySelectorAll('.seating-table').forEach(t => t.classList.remove('edit-mode-active'));
+
+        // Convert col-header-input fields back to plain text
+        document.querySelectorAll('#tab-seating .seating-table thead th .col-header-input').forEach(input => {
+            const th = input.parentElement;
+            th.textContent = input.value.trim();
+        });
+
         // Clear buffer map
         window._bufferOriginMap = new Map();
         window._seatingSnapshot = null;
@@ -158,6 +165,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add a visual cue to the tables
             document.querySelectorAll('.seating-table').forEach(t => t.classList.add('edit-mode-active'));
+
+            // Convert column header <th> cells into editable inputs
+            document.querySelectorAll('#tab-seating .seating-table thead th').forEach(th => {
+                const currentText = th.textContent.trim();
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentText;
+                input.className = 'col-header-input';
+                input.style.cssText = [
+                    'width: 100%',
+                    'background: transparent',
+                    'border: none',
+                    'border-bottom: 1px dashed var(--primary-color)',
+                    'color: var(--text-main)',
+                    'font-family: inherit',
+                    'font-size: inherit',
+                    'font-weight: 600',
+                    'text-align: center',
+                    'outline: none',
+                    'padding: 2px 4px',
+                    'min-width: 60px',
+                    'cursor: text'
+                ].join(';');
+                input.title = 'Click to edit column year label (e.g. II Yr, II/III Yr)';
+                th.innerHTML = '';
+                th.appendChild(input);
+            });
         });
     }
 
@@ -2473,7 +2507,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const door = meta.door || 'right';
             const headers = meta.headers || [];
 
-            const matrix = [headers];
+            // Read column headers from DOM — user may have edited them in edit mode
+            const domHeaders = [];
+            table.querySelectorAll('thead th').forEach(th => {
+                const input = th.querySelector('.col-header-input');
+                domHeaders.push(input ? input.value.trim() : th.textContent.trim());
+            });
+            const effectiveHeaders = domHeaders.length > 0 ? domHeaders : headers;
+            const matrix = [effectiveHeaders];
             const tbodyRows = table.querySelectorAll('tbody tr');
             let totalInRoom = 0;
             const counts = {};
@@ -2520,7 +2561,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     date: session.date,
                     shift: session.shift,
                     rows, cols, door,
-                    headers, matrix, counts, total_in_room: totalInRoom
+                    headers: effectiveHeaders, matrix, counts, total_in_room: totalInRoom
                 });
 
                 const roomStudents = [];

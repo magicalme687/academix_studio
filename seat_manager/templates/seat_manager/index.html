@@ -897,16 +897,41 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
             /* ── Floating Dev Credit → scroll to credits section ── */
             const devBtn = document.getElementById('dev-credit-float-btn');
             if (devBtn) {
+                // Hide when clicked (after scrolling to footer)
                 devBtn.addEventListener('click', () => {
                     const creditsCard = document.querySelector('.credits-card');
                     if (creditsCard) {
                         creditsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        // Briefly highlight the card
                         creditsCard.style.transition = 'box-shadow 0.3s ease';
                         creditsCard.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.6)';
                         setTimeout(() => { creditsCard.style.boxShadow = ''; }, 1800);
                     }
+                    // Fade out the button
+                    devBtn.style.opacity = '0';
+                    devBtn.style.pointerEvents = 'none';
+                    devBtn.style.transform = 'translateY(10px)';
                 });
+
+                // Auto-hide when credits card / footer enters viewport, show again when it leaves
+                const creditsCard = document.querySelector('.credits-card');
+                if (creditsCard && 'IntersectionObserver' in window) {
+                    const obs = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                // Footer visible — hide the button
+                                devBtn.style.opacity = '0';
+                                devBtn.style.pointerEvents = 'none';
+                                devBtn.style.transform = 'translateY(10px)';
+                            } else {
+                                // Footer out of view — restore the button
+                                devBtn.style.opacity = '0.55';
+                                devBtn.style.pointerEvents = 'auto';
+                                devBtn.style.transform = 'translateY(0)';
+                            }
+                        });
+                    }, { threshold: 0.1 });
+                    obs.observe(creditsCard);
+                }
             }
 
             /* ── Site Visit Counter (localStorage-based) ── */
