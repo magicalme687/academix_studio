@@ -1808,6 +1808,11 @@ document.addEventListener('DOMContentLoaded', () => {
             presetObj.studentDataStr = JSON.stringify(data.attendance_data);
             presetObj.name = `Config - ${scheduleConfig[0]?.date || 'Unknown Date'}`;
 
+            // Cache for Add Room feature
+            window.activePreset = presetObj;
+            window.globalSeatingData = data;
+            window.lastLogoBase64 = instituteLogoBase64;
+
             try {
                 let existingPresets = JSON.parse(localStorage.getItem('examSeatingPresets')) || [];
                 // Add to beginning, keep only last 4
