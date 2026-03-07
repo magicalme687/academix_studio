@@ -1,0 +1,109 @@
+﻿diff --git a/seat_manager/static/seat_manager/script_v2.js b/seat_manager/static/seat_manager/script_v2.js
+index 7477543..613b0b8 100644
+--- a/seat_manager/static/seat_manager/script_v2.js
++++ b/seat_manager/static/seat_manager/script_v2.js
+@@ -990,7 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
+                         </select>
+                         <select class="shift-start-min" required style="flex:1; padding: 0.5rem; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main);">
+                             <option value="" disabled selected>MM</option>
+-                            ${Array.from({ length: 60 }, (_, i) => `<option value="${String(i).padStart(2, '0')}">${String(i).padStart(2, '0')}</option>`).join('')}
++                            ${Array.from({ length: 12 }, (_, i) => `<option value="${String(i * 5).padStart(2, '0')}">${String(i * 5).padStart(2, '0')}</option>`).join('')}
+                         </select>
+                         <select class="shift-start-ampm" required style="flex:1; padding: 0.5rem; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main);">
+                             <option value="AM" selected>AM</option>
+@@ -1008,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
+                         </select>
+                         <select class="shift-end-min" required style="flex:1; padding: 0.5rem; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main);">
+                             <option value="" disabled selected>MM</option>
+-                            ${Array.from({ length: 60 }, (_, i) => `<option value="${String(i).padStart(2, '0')}">${String(i).padStart(2, '0')}</option>`).join('')}
++                            ${Array.from({ length: 12 }, (_, i) => `<option value="${String(i * 5).padStart(2, '0')}">${String(i * 5).padStart(2, '0')}</option>`).join('')}
+                         </select>
+                         <select class="shift-end-ampm" required style="flex:1; padding: 0.5rem; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main);">
+                             <option value="AM">AM</option>
+@@ -2337,6 +2337,13 @@ document.addEventListener('DOMContentLoaded', () => {
+             </div>
+         `;
+ 
++        // Build a quick lookup: "date|||shift" -> { yr -> subjectCode }
++        const subjectLookup = {};
++        (data.master_timetable || []).forEach(entry => {
++            const key = `${entry.date}|||${entry.shift}`;
++            subjectLookup[key] = entry; // entry has IV Yr, III Yr, II Yr, I Yr fields
++        });
++
+         // Build Master Attendance Tab
+         let masterAttendanceHtml = `<h1 style="font-size: 2.5rem; color: var(--primary-color); text-align: center; margin-bottom: 2rem;">Master Attendance</h1>`;
+         ['I Yr', 'II Yr', 'III Yr', 'IV Yr'].forEach(yr => {
+@@ -2357,7 +2364,14 @@ document.addEventListener('DOMContentLoaded', () => {
+ 
+                 if (yearExamDates.length > 0) {
+                     yearExamDates.forEach(dateLabel => {
+-                        masterAttendanceHtml += `<th>Sign <br><span style="font-size: 0.8rem; font-weight: normal">${dateLabel}</span></th>`;
++                        // dateLabel format: "01/03/2026 ΓÇó 10:00 AM - 01:00 PM"
++                        // Look up subject: need matching master_timetable entry
++                        const matchEntry = (data.master_timetable || []).find(e => {
++                            const lbl = `${e.date} ΓÇó ${e.shift}`;
++                            return lbl === dateLabel || dateLabel.includes(e.date);
++                        });
++                        const subjectCode = matchEntry ? (matchEntry[yr] || '') : '';
++                        masterAttendanceHtml += `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05); min-width:90px;">Sign <br><span style="font-size: 0.8rem; font-weight: normal">${dateLabel}</span>${subjectCode && subjectCode !== '-' ? `<br><span style="font-size: 0.75rem; font-style: italic; color: var(--accent-color); font-weight: 600;">${subjectCode}</span>` : ''}</th>`;
+                     });
+                 } else {
+                     masterAttendanceHtml += `<th>Signature</th>`;
+@@ -2456,7 +2470,12 @@ document.addEventListener('DOMContentLoaded', () => {
+                                                     <th style="width: 80px; border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">S.No</th>
+                                                     <th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Enrollment No</th>
+                                                     <th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Student Name</th>
+-                                                    ${sheet.sessions.map(s => `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Sign<br><span style="font-size: 0.8rem; font-weight: normal;">${s.date}<br>${s.shift}</span></th>`).join('')}
++                                                    ${sheet.sessions.map(s => {
++                        const sKey = `${s.date}|||${s.shift}`;
++                        const sEntry = subjectLookup[sKey] || {};
++                        const sCode = sEntry[sheet.year] || '';
++                        return `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05); min-width:90px;">Sign<br><span style="font-size: 0.8rem; font-weight: normal;">${s.date}<br>${s.shift}</span>${sCode && sCode !== '-' ? `<br><span style="font-size: 0.75rem; font-style: italic; color: var(--accent-color); font-weight: 600;">${sCode}</span>` : ''}</th>`;
++                    }).join('')}
+                                                 </tr>
+                                             </thead>
+                                             <tbody>
+@@ -2620,7 +2639,42 @@ document.addEventListener('DOMContentLoaded', () => {
+         // Re-render attendance tabs with sync'd data
+         const instituteName = document.getElementById('institute-name').value.trim();
+         const departmentName = document.getElementById('department-name').value.trim();
++
++        // Make sure the freshly built room attendance is in globalSeatingData before rendering
++        window.globalSeatingData.room_attendance_data = newRoomAttendance;
++
+         window.renderAttendanceTabs(window.globalSeatingData, instituteName, window.lastLogoBase64 || '', departmentName);
++
++        // Re-activate the first room pill in attendance tab so user sees updated data
++        const firstAttRoomBtn = document.querySelector('#tab-attendance-room .attendance-room-btn');
++        if (firstAttRoomBtn && !firstAttRoomBtn.classList.contains('active')) {
++            firstAttRoomBtn.click();
++        }
++
++        // Brief success toast to confirm update
++        let toast = document.getElementById('_sync-toast');
++        if (!toast) {
++            toast = document.createElement('div');
++            toast.id = '_sync-toast';
++            toast.style.cssText = [
++                'position:fixed', 'bottom:5rem', 'left:50%', 'transform:translateX(-50%) translateY(20px)',
++                'background:linear-gradient(135deg,var(--success-color,#10b981),#059669)',
++                'color:#fff', 'padding:0.55rem 1.2rem', 'border-radius:999px',
++                'font-size:0.85rem', 'font-weight:600', 'z-index:99999',
++                'opacity:0', 'transition:opacity 0.3s ease, transform 0.3s ease',
++                'pointer-events:none', 'box-shadow:0 4px 16px rgba(16,185,129,0.4)'
++            ].join(';');
++            document.body.appendChild(toast);
++        }
++        toast.innerHTML = '<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Seating & Attendance updated';
++        requestAnimationFrame(() => {
++            toast.style.opacity = '1';
++            toast.style.transform = 'translateX(-50%) translateY(0)';
++        });
++        setTimeout(() => {
++            toast.style.opacity = '0';
++            toast.style.transform = 'translateX(-50%) translateY(20px)';
++        }, 2800);
+     };
+ 
+ });

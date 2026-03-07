@@ -864,7 +864,16 @@ body {
 .student-id {
     font-weight: 600;
     color: var(--text-main);
+    font-size: 1.15rem;
+}
+
+.student-id.len-medium {
     font-size: 1.05rem;
+}
+
+.student-id.len-long {
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
 }
 
 .student-yr {
@@ -1299,7 +1308,16 @@ body {
     }
 
     .student-id {
+        font-size: 0.85rem;
+    }
+
+    .student-id.len-medium {
         font-size: 0.75rem;
+    }
+
+    .student-id.len-long {
+        font-size: 0.65rem;
+        letter-spacing: -0.01em;
     }
 
     .year-badge {
@@ -1482,6 +1500,12 @@ body {
     break-after: auto !important;
 }
 
+.print-logo {
+    max-height: 150px;
+    max-width: 150px;
+    object-fit: contain;
+}
+
 /* =========================================
    PRINT STYLES FOR PROFESSIONAL OUTPUT
    ========================================= */
@@ -1573,11 +1597,13 @@ body {
     /* Seating tables can be small to fit the room grid */
     .print-container .seating-table {
         font-size: 0.70rem !important;
+        width: 100% !important;
+        table-layout: fixed !important;
     }
 
     .print-container .seating-table th,
     .print-container .seating-table td {
-        padding: 4px 6px !important;
+        padding: 4px 0px !important;
         font-size: 0.70rem !important;
     }
 
@@ -1586,12 +1612,29 @@ body {
     }
 
     .print-container .student-id {
-        font-size: 0.72rem !important;
+        font-size: clamp(0.55rem, 1.55vw, 1.15rem) !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+    }
+
+    .print-container .student-id.len-medium {
+        font-size: clamp(0.5rem, 1.4vw, 1.05rem) !important;
+    }
+
+    .print-container .student-id.len-long {
+        font-size: clamp(0.45rem, 1.25vw, 0.95rem) !important;
+        letter-spacing: -0.01em !important;
     }
 
     .print-container .year-badge {
-        font-size: 0.55rem !important;
-        padding: 1px 3px !important;
+        font-size: clamp(0.35rem, 0.8vw, 0.65rem) !important;
+        padding: 2px 4px !important;
+        white-space: nowrap !important;
+    }
+
+    .print-container .print-logo {
+        max-height: 250px !important;
+        max-width: 250px !important;
     }
 
     .print-container .print-header h1 {

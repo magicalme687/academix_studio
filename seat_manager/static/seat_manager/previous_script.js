@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
     window.tableDataMap = {};
     window.isEditMode = false;
     // --- Theme Toggle ---
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const bufferDropzone = document.getElementById('buffer-dropzone');
     const bufferPlaceholder = document.getElementById('buffer-placeholder');
 
-    // Map from buffer seat DOM element → original empty seat DOM element
+    // Map from buffer seat DOM element ΓåÆ original empty seat DOM element
     window._bufferOriginMap = new Map();
     // DOM snapshot of the full seating tab for cancel-restore
     window._seatingSnapshot = null;
@@ -204,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Valid to confirm — sync data and exit
+            // Valid to confirm ΓÇö sync data and exit
             exitEditMode();
 
             if (window.syncSeatingDOMToGlobalData) {
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 bufferSeat.style.minWidth = '120px';
                 bufferSeat.style.cursor = 'grab';
 
-                // ✕ Close button — returns student to their original seat
+                // Γ£ò Close button ΓÇö returns student to their original seat
                 const closeBtn = document.createElement('button');
                 closeBtn.innerHTML = '&times;';
                 closeBtn.title = 'Remove from buffer & return to original seat';
@@ -726,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Clear previous
                     window.subjectCodes = { "I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": [] };
 
-                    // Skip row 0 — it's the header row (e.g. "I Yr", "II Yr", etc.)
+                    // Skip row 0 ΓÇö it's the header row (e.g. "I Yr", "II Yr", etc.)
                     json.slice(1).forEach(row => {
                         // Combines Subject Code and Name into a single string if available
                         if (row[0]) {
@@ -866,7 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populateDropdown(selectEl, year) {
         const val = selectEl.value;
-        // Clear and rebuild — no disabled placeholder option
+        // Clear and rebuild ΓÇö no disabled placeholder option
         selectEl.innerHTML = '';
         if (window.subjectCodes[year] && window.subjectCodes[year].length > 0) {
             window.subjectCodes[year].forEach(code => {
@@ -878,7 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const opt = document.createElement('option');
             opt.value = '';
-            opt.textContent = '— No subjects loaded —';
+            opt.textContent = 'ΓÇö No subjects loaded ΓÇö';
             opt.disabled = true;
             opt.selected = true;
             selectEl.appendChild(opt);
@@ -902,7 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (firstAvailable) {
                 selectEl.value = firstAvailable.value;
             } else {
-                // All subjects exhausted — insert disabled placeholder so browser doesn't auto-pick first
+                // All subjects exhausted ΓÇö insert disabled placeholder so browser doesn't auto-pick first
                 const ph = document.createElement('option');
                 ph.value = '';
                 ph.textContent = '\u2014 All subjects scheduled \u2014';
@@ -938,7 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Disable year checkboxes whose entire subject list is exhausted
-        // (only disable unchecked checkboxes — already-selected ones stay active)
+        // (only disable unchecked checkboxes ΓÇö already-selected ones stay active)
         document.querySelectorAll('.year-checkbox').forEach(cb => {
             if (cb.checked) return; // don't touch already-selected years
             const yr = cb.dataset.year;
@@ -990,7 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </select>
                         <select class="shift-start-min" required style="flex:1; padding: 0.5rem; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main);">
                             <option value="" disabled selected>MM</option>
-                            ${Array.from({ length: 12 }, (_, i) => `<option value="${String(i * 5).padStart(2, '0')}">${String(i * 5).padStart(2, '0')}</option>`).join('')}
+                            ${Array.from({ length: 60 }, (_, i) => `<option value="${String(i).padStart(2, '0')}">${String(i).padStart(2, '0')}</option>`).join('')}
                         </select>
                         <select class="shift-start-ampm" required style="flex:1; padding: 0.5rem; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main);">
                             <option value="AM" selected>AM</option>
@@ -998,7 +998,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </select>
                     </div>
                 </div>
-                <div style="color: var(--text-muted); font-size: 1.2rem; padding-bottom: 0.4rem; flex-shrink: 0;">→</div>
+                <div style="color: var(--text-muted); font-size: 1.2rem; padding-bottom: 0.4rem; flex-shrink: 0;">ΓåÆ</div>
                 <div style="flex: 1;">
                     <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;"><i class="fa-regular fa-clock" style="margin-right:3px;"></i>End Time</label>
                     <div style="display: flex; gap: 5px;">
@@ -1008,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </select>
                         <select class="shift-end-min" required style="flex:1; padding: 0.5rem; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main);">
                             <option value="" disabled selected>MM</option>
-                            ${Array.from({ length: 12 }, (_, i) => `<option value="${String(i * 5).padStart(2, '0')}">${String(i * 5).padStart(2, '0')}</option>`).join('')}
+                            ${Array.from({ length: 60 }, (_, i) => `<option value="${String(i).padStart(2, '0')}">${String(i).padStart(2, '0')}</option>`).join('')}
                         </select>
                         <select class="shift-end-ampm" required style="flex:1; padding: 0.5rem; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main);">
                             <option value="AM">AM</option>
@@ -1101,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!sHr || !sMin || !sAmPm) return; // Start time incomplete
 
             // Convert start to 24h minutes
-            let startH24 = parseInt(sHr, 10) % 12; // 12 AM/PM → 0
+            let startH24 = parseInt(sHr, 10) % 12; // 12 AM/PM ΓåÆ 0
             if (sAmPm === 'PM') startH24 += 12;
             const startTotalMins = startH24 * 60 + parseInt(sMin, 10);
 
@@ -1222,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 prefix: match[1],
                 number: parseInt(match[2], 10),
-                numWidth: match[2].length, // preserve original digit width (e.g. "003" → width 3)
+                numWidth: match[2].length, // preserve original digit width (e.g. "003" ΓåÆ width 3)
                 suffix: match[3],
                 parsed: true
             };
@@ -1230,7 +1230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return { parsed: false };
     }
 
-    // Called when a room name input is changed — cascades incremented names to all following rooms
+    // Called when a room name input is changed ΓÇö cascades incremented names to all following rooms
     window.cascadeRoomNames = function (changedId) {
         const changedInput = document.getElementById(`room-name-input-${changedId}`);
         if (!changedInput) return;
@@ -1992,35 +1992,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function renderResults(data, instituteName, instituteLogoBase64, departmentName, instituteSubheader) {
-        // Read Printable Footer settings
-        const enableFooter = document.getElementById('enable-footer-toggle')?.checked;
-        const footerScope = document.querySelector('input[name="footer-scope"]:checked')?.value || 'all';
-        const enableTargetTimetable = document.getElementById('footer-target-timetable')?.checked;
-        const enableTargetSeating = document.getElementById('footer-target-seating')?.checked;
-        const enableTargetAttendance = document.getElementById('footer-target-attendance')?.checked;
-
-        const leftSig = document.getElementById('footer-left-text')?.value || 'MST Coordinator';
-        const centerSig = document.getElementById('footer-center-text')?.value || 'Branch Coordinator';
-        const rightSig = document.getElementById('footer-right-text')?.value || 'HoD CSE';
-
-        const renderFooterHtml = (isLast, targetType) => {
-            if (!enableFooter) return '';
-
-            if (targetType === 'timetable' && !enableTargetTimetable) return '';
-            if (targetType === 'seating' && !enableTargetSeating) return '';
-            if (targetType === 'attendance' && !enableTargetAttendance) return '';
-
-            if (footerScope === 'last' && !isLast) return '';
-
-            return `
-                <div class="print-footer" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 50px; padding: 15px 50px 0 50px;">
-                    <div style="text-align: left; font-weight: 600; width: 33%; font-size: 1.1rem; color: var(--text-main);">${leftSig}</div>
-                    <div style="text-align: center; font-weight: 600; width: 33%; font-size: 1.1rem; color: var(--text-main);">${centerSig}</div>
-                    <div style="text-align: right; font-weight: 600; width: 33%; font-size: 1.1rem; color: var(--text-main);">${rightSig}</div>
-                </div>
-            `;
-        };
-
         // Hide config, show results
         document.getElementById('config-section').classList.add('hidden');
         document.getElementById('timetable-builder-section').classList.add('hidden');
@@ -2030,7 +2001,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const buildPrintHeader = (subtitle) => `
             <div class="print-header" style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 2rem; border-bottom: 3px double var(--border-color); padding-bottom: 1rem;">
-                ${instituteLogoBase64 ? `<img src="${instituteLogoBase64}" class="print-logo" alt="Logo">` : ''}
+                ${instituteLogoBase64 ? `<img src="${instituteLogoBase64}" alt="Logo" style="max-height: 80px; max-width: 80px; object-fit: contain;">` : ''}
                 <div style="text-align: center;">
                     <h1 style="font-size: 2rem; margin: 0; color: var(--text-main); text-transform: uppercase; font-family: 'Times New Roman', Times, serif;">${instituteName}</h1>
                     <p style="margin: 0.15rem 0 0 0; font-size: 1rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">Department of ${departmentName}</p>
@@ -2085,7 +2056,6 @@ document.addEventListener('DOMContentLoaded', () => {
         masterHtml += `
                 </tbody>
             </table>
-            ${renderFooterHtml(true, 'timetable')}
         </div>`;
         document.getElementById('tab-timetable').innerHTML = masterHtml;
 
@@ -2116,7 +2086,7 @@ document.addEventListener('DOMContentLoaded', () => {
             consolidatedSeating[hashKey].sessions.push({ date: plan.date, shift: plan.shift });
         });
 
-        // Preserve the exact room order the user entered (UI tile order) — no sorting
+        // Preserve the exact room order the user entered (UI tile order) ΓÇö no sorting
         const seatingRoomsList = [...new Set(data.seating_plans.map(p => p.room_name))];
 
         if (seatingRoomsList.length > 0) {
@@ -2143,7 +2113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const orientationClass = plan.cols > plan.rows ? 'landscape-table' : 'portrait-table';
 
                     // Construct a compact single-line string of all dates/shifts sharing this layout
-                    const sessionsHtml = plan.sessions.map(s => `<span style="white-space:nowrap;">${s.date} &nbsp;${s.shift}</span>`).join('<span style="margin:0 6px;opacity:0.5;">•</span>');
+                    const sessionsHtml = plan.sessions.map(s => `<span style="white-space:nowrap;">${s.date} &nbsp;${s.shift}</span>`).join('<span style="margin:0 6px;opacity:0.5;">ΓÇó</span>');
 
                     const tableId = `tbl_${Math.random().toString(36).substr(2, 9)}`;
                     window.tableDataMap[tableId] = {
@@ -2157,7 +2127,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     seatingHtml += `
             <div class="glass-card ${orientationClass} print-container" style="margin-bottom: 4rem; overflow-x: auto; position: relative;">
-                                ${buildPrintHeader(`Seating Chart • ${plan.room_name}`)}
+                                ${buildPrintHeader(`Seating Chart ΓÇó ${plan.room_name}`)}
                                 <div style="color: var(--text-main); margin-bottom: 0.75rem; text-align: center; font-size: 0.85rem; font-weight: 600; line-height: 1.4; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px;">
                                     <i class="fa-regular fa-calendar" style="margin-right:4px; opacity:0.7;"></i>${sessionsHtml}
                                 </div>
@@ -2180,12 +2150,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const enrollmentStr = typeof cell.student === 'object' ? (cell.student.enrollment || '') : cell.student;
                         const nameStr = typeof cell.student === 'object' ? (cell.student.name || '') : '';
 
-                        let lenClass = 'len-short';
-                        if (enrollmentStr.length > 11) lenClass = 'len-long';
-                        else if (enrollmentStr.length > 8) lenClass = 'len-medium';
-
                         return `<td class="chart-seat occupied-seat" draggable="true" data-enrollment="${enrollmentStr}" data-name="${nameStr}" data-year="${cell.year}" title="${nameStr ? enrollmentStr + ' - ' + nameStr : enrollmentStr}\nDrag to rearrange.">
-                                    <div class="student-id ${lenClass}">${enrollmentStr}</div>
+                                    <div class="student-id">${enrollmentStr}</div>
                                     <div class="year-badge ${cell.year.replace(' ', '-')}">${cell.year}</div>
                                 </td>`;
                     }).join('')}
@@ -2208,7 +2174,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                         Total Students in Room: <span style="color: var(--primary-color);">${plan.total_in_room} / ${plan.rows * plan.cols} Capacity</span>
                                     </div>
                                 </div>
-                                ${renderFooterHtml(idx === plansForRoom.length - 1, 'seating')}
                             </div>
                     `;
                 });
@@ -2360,39 +2325,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!instituteSubheader) {
             instituteSubheader = document.getElementById('institute-subheader')?.value.trim() || '';
         }
-
-        // Read Printable Footer settings
-        const enableFooter = document.getElementById('enable-footer-toggle')?.checked;
-        const footerScope = document.querySelector('input[name="footer-scope"]:checked')?.value || 'all';
-        const enableTargetTimetable = document.getElementById('footer-target-timetable')?.checked;
-        const enableTargetSeating = document.getElementById('footer-target-seating')?.checked;
-        const enableTargetAttendance = document.getElementById('footer-target-attendance')?.checked;
-
-        const leftSig = document.getElementById('footer-left-text')?.value || 'MST Coordinator';
-        const centerSig = document.getElementById('footer-center-text')?.value || 'Branch Coordinator';
-        const rightSig = document.getElementById('footer-right-text')?.value || 'HoD CSE';
-
-        const renderFooterHtml = (isLast, targetType) => {
-            if (!enableFooter) return '';
-
-            if (targetType === 'timetable' && !enableTargetTimetable) return '';
-            if (targetType === 'seating' && !enableTargetSeating) return '';
-            if (targetType === 'attendance' && !enableTargetAttendance) return '';
-
-            if (footerScope === 'last' && !isLast) return '';
-
-            return `
-                <div class="print-footer" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 50px; padding: 15px 50px 0 50px;">
-                    <div style="text-align: left; font-weight: 600; width: 33%; font-size: 1.1rem; color: var(--text-main);">${leftSig}</div>
-                    <div style="text-align: center; font-weight: 600; width: 33%; font-size: 1.1rem; color: var(--text-main);">${centerSig}</div>
-                    <div style="text-align: right; font-weight: 600; width: 33%; font-size: 1.1rem; color: var(--text-main);">${rightSig}</div>
-                </div>
-            `;
-        };
-
         const buildPrintHeader = (subtitle) => `
             <div class="print-header" style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 2rem; border-bottom: 3px double var(--border-color); padding-bottom: 1rem;">
-                ${instituteLogoBase64 ? `<img src="${instituteLogoBase64}" class="print-logo" alt="Logo">` : ''}
+                ${instituteLogoBase64 ? `<img src="${instituteLogoBase64}" alt="Logo" style="max-height: 80px; max-width: 80px; object-fit: contain;">` : ''}
                 <div style="text-align: center;">
                     <h1 style="font-size: 2rem; margin: 0; color: var(--text-main); text-transform: uppercase; font-family: 'Times New Roman', Times, serif;">${instituteName}</h1>
                     <p style="margin: 0.15rem 0 0 0; font-size: 1rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">Department of ${departmentName}</p>
@@ -2401,13 +2336,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `;
-
-        // Build a quick lookup: "date|||shift" -> { yr -> subjectCode }
-        const subjectLookup = {};
-        (data.master_timetable || []).forEach(entry => {
-            const key = `${entry.date}|||${entry.shift}`;
-            subjectLookup[key] = entry; // entry has IV Yr, III Yr, II Yr, I Yr fields
-        });
 
         // Build Master Attendance Tab
         let masterAttendanceHtml = `<h1 style="font-size: 2.5rem; color: var(--primary-color); text-align: center; margin-bottom: 2rem;">Master Attendance</h1>`;
@@ -2418,7 +2346,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (students.length > 0 && yearExamDates.length > 0) {
                 masterAttendanceHtml += `
             <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem;">
-                    ${buildPrintHeader(`GLOBAL ATTENDANCE • YEAR: ${yr}`)}
+                    ${buildPrintHeader(`GLOBAL ATTENDANCE ΓÇó YEAR: ${yr}`)}
                     <table class="attendance-table" style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr>
@@ -2429,14 +2357,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (yearExamDates.length > 0) {
                     yearExamDates.forEach(dateLabel => {
-                        // dateLabel format: "01/03/2026 • 10:00 AM - 01:00 PM"
-                        // Look up subject: need matching master_timetable entry
-                        const matchEntry = (data.master_timetable || []).find(e => {
-                            const lbl = `${e.date} • ${e.shift}`;
-                            return lbl === dateLabel || dateLabel.includes(e.date);
-                        });
-                        const subjectCode = matchEntry ? (matchEntry[yr] || '') : '';
-                        masterAttendanceHtml += `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05); min-width:90px;">Sign <br><span style="font-size: 0.8rem; font-weight: normal">${dateLabel}</span>${subjectCode && subjectCode !== '-' ? `<br><span style="font-size: 0.75rem; font-style: italic; color: var(--accent-color); font-weight: 600;">${subjectCode}</span>` : ''}</th>`;
+                        masterAttendanceHtml += `<th>Sign <br><span style="font-size: 0.8rem; font-weight: normal">${dateLabel}</span></th>`;
                     });
                 } else {
                     masterAttendanceHtml += `<th>Signature</th>`;
@@ -2468,7 +2389,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }).join('')}
                         </tbody>
                     </table>
-                    ${renderFooterHtml(true, 'attendance')}
                 </div >
             `;
             }
@@ -2524,8 +2444,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sheetsForRoom = Object.values(consolidatedAttendance).filter(c => c.room_name === room);
                 sheetsForRoom.sort((a, b) => yearOrder.indexOf(a.year) - yearOrder.indexOf(b.year));
 
-                sheetsForRoom.forEach((sheet, idx) => {
-                    let subtitle = `ROOM ATTENDANCE • ${sheet.room_name} • ${sheet.year}`;
+                sheetsForRoom.forEach(sheet => {
+                    let subtitle = `ROOM ATTENDANCE ΓÇó ${sheet.room_name} ΓÇó ${sheet.year}`;
 
                     roomAttendanceHtml += `
             <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem; overflow-x: auto; position: relative;">
@@ -2536,12 +2456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                     <th style="width: 80px; border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">S.No</th>
                                                     <th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Enrollment No</th>
                                                     <th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Student Name</th>
-                                                    ${sheet.sessions.map(s => {
-                        const sKey = `${s.date}|||${s.shift}`;
-                        const sEntry = subjectLookup[sKey] || {};
-                        const sCode = sEntry[sheet.year] || '';
-                        return `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05); min-width:90px;">Sign<br><span style="font-size: 0.8rem; font-weight: normal;">${s.date}<br>${s.shift}</span>${sCode && sCode !== '-' ? `<br><span style="font-size: 0.75rem; font-style: italic; color: var(--accent-color); font-weight: 600;">${sCode}</span>` : ''}</th>`;
-                    }).join('')}
+                                                    ${sheet.sessions.map(s => `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Sign<br><span style="font-size: 0.8rem; font-weight: normal;">${s.date}<br>${s.shift}</span></th>`).join('')}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -2564,7 +2479,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }).join('')}
                                             </tbody>
                                         </table>
-                                        ${renderFooterHtml(idx === sheetsForRoom.length - 1, 'attendance')}
                                     </div>
                     `;
                 });
@@ -2593,7 +2507,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const door = meta.door || 'right';
             const headers = meta.headers || [];
 
-            // Read column headers from DOM — user may have edited them in edit mode
+            // Read column headers from DOM ΓÇö user may have edited them in edit mode
             const domHeaders = [];
             table.querySelectorAll('thead th').forEach(th => {
                 const input = th.querySelector('.col-header-input');
@@ -2706,42 +2620,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Re-render attendance tabs with sync'd data
         const instituteName = document.getElementById('institute-name').value.trim();
         const departmentName = document.getElementById('department-name').value.trim();
-
-        // Make sure the freshly built room attendance is in globalSeatingData before rendering
-        window.globalSeatingData.room_attendance_data = newRoomAttendance;
-
         window.renderAttendanceTabs(window.globalSeatingData, instituteName, window.lastLogoBase64 || '', departmentName);
-
-        // Re-activate the first room pill in attendance tab so user sees updated data
-        const firstAttRoomBtn = document.querySelector('#tab-attendance-room .attendance-room-btn');
-        if (firstAttRoomBtn && !firstAttRoomBtn.classList.contains('active')) {
-            firstAttRoomBtn.click();
-        }
-
-        // Brief success toast to confirm update
-        let toast = document.getElementById('_sync-toast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = '_sync-toast';
-            toast.style.cssText = [
-                'position:fixed', 'bottom:5rem', 'left:50%', 'transform:translateX(-50%) translateY(20px)',
-                'background:linear-gradient(135deg,var(--success-color,#10b981),#059669)',
-                'color:#fff', 'padding:0.55rem 1.2rem', 'border-radius:999px',
-                'font-size:0.85rem', 'font-weight:600', 'z-index:99999',
-                'opacity:0', 'transition:opacity 0.3s ease, transform 0.3s ease',
-                'pointer-events:none', 'box-shadow:0 4px 16px rgba(16,185,129,0.4)'
-            ].join(';');
-            document.body.appendChild(toast);
-        }
-        toast.innerHTML = '<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i>Seating & Attendance updated';
-        requestAnimationFrame(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateX(-50%) translateY(0)';
-        });
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(-50%) translateY(20px)';
-        }, 2800);
     };
 
 });

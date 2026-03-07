@@ -89,12 +89,19 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
                     <i class="fa-solid fa-image input-icon"></i>
                 </div>
 
-                <div class="input-wrapper floating-label" style="padding-top: 0.75rem;">
-                    <input type="file" id="student-file" accept=".xlsx, .xls" required>
-                    <label for="student-file"
-                        style="top: 0px; font-size: 0.75rem; background: var(--bg-card); color: var(--primary-color); font-weight: 500;">Student
-                        List (Excel)</label>
-                    <i class="fa-solid fa-users input-icon"></i>
+                <div style="display: flex; flex-direction: column; gap: 0.3rem; grid-column: span 2;">
+                    <div class="input-wrapper floating-label" style="padding-top: 0.75rem; margin-bottom: 0;">
+                        <input type="file" id="student-file" accept=".xlsx, .xls" required>
+                        <label for="student-file"
+                            style="top: 0px; font-size: 0.75rem; background: var(--bg-card); color: var(--primary-color); font-weight: 500;">Student
+                            List (Excel)</label>
+                        <i class="fa-solid fa-users input-icon"></i>
+                    </div>
+                    <div style="text-align: right; padding-right: 0.5rem;">
+                        <a href="{% static 'seat_manager/sample/student_data.xlsx' %}" download
+                            style="font-size: 0.82rem; color: var(--primary-color); text-decoration: none; font-weight: 600; transition: color 0.2s;"><i
+                                class="fa-solid fa-download"></i> Download Sample Excel</a>
+                    </div>
                 </div>
                 <div class="input-wrapper" style="grid-column: span 2;">
                     <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
@@ -122,11 +129,20 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
                     </div>
                 </div>
 
-                <div class="input-wrapper floating-label subject-source-excel" style="grid-column: span 2;">
-                    <input type="file" id="subject-file" accept=".xlsx, .xls" required>
-                    <label for="subject-file" style="top:-10px; font-size: 0.8rem; background: var(--bg-card);">Subject
-                        Codes (Excel)</label>
-                    <i class="fa-solid fa-book input-icon"></i>
+                <div class="subject-source-excel"
+                    style="grid-column: span 2; display: flex; flex-direction: column; gap: 0.3rem;">
+                    <div class="input-wrapper floating-label" style="margin-bottom: 0;">
+                        <input type="file" id="subject-file" accept=".xlsx, .xls" required>
+                        <label for="subject-file"
+                            style="top:-10px; font-size: 0.8rem; background: var(--bg-card);">Subject
+                            Codes (Excel)</label>
+                        <i class="fa-solid fa-book input-icon"></i>
+                    </div>
+                    <div style="text-align: right; padding-right: 0.5rem;">
+                        <a href="{% static 'seat_manager/sample/subjects_test.xlsx' %}" download
+                            style="font-size: 0.82rem; color: var(--primary-color); text-decoration: none; font-weight: 600; transition: color 0.2s;"><i
+                                class="fa-solid fa-download"></i> Download Sample Excel</a>
+                    </div>
                 </div>
 
                 <div class="subject-source-manual hidden" style="grid-column: span 2;">
@@ -322,6 +338,83 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
 
             <section id="rooms-container" class="rooms-grid slide-up delay-3">
                 <!-- Configured Room cards go here -->
+            </section>
+
+            <!-- Printable Footer Configuration -->
+            <section class="glass-card slide-up delay-3" style="margin-top: 2rem; padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div>
+                        <h3 style="margin: 0; color: var(--text-main); font-size: 1.15rem;"><i
+                                class="fa-solid fa-file-signature"></i> Printable Footer Configuration</h3>
+                        <p style="margin: 0.3rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Add a signature
+                            row at the bottom of printed sheets (Seating & Attendance).</p>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="enable-footer-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div id="footer-config-details"
+                    style="display: none; border-top: 1px solid var(--border-color); padding-top: 1.5rem; transition: all 0.3s ease;">
+                    <div class="grid-3-col" style="gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="input-wrapper floating-label">
+                            <input type="text" id="footer-left-text" placeholder=" " value="MST Coordinator">
+                            <label>Left Signature</label>
+                            <i class="fa-solid fa-pen input-icon"></i>
+                        </div>
+                        <div class="input-wrapper floating-label">
+                            <input type="text" id="footer-center-text" placeholder=" " value="Branch Coordinator">
+                            <label>Center Signature</label>
+                            <i class="fa-solid fa-pen input-icon"></i>
+                        </div>
+                        <div class="input-wrapper floating-label">
+                            <input type="text" id="footer-right-text" placeholder=" " value="HoD CSE">
+                            <label>Right Signature</label>
+                            <i class="fa-solid fa-pen input-icon"></i>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 2rem; align-items: center;">
+                        <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">Display
+                            Scope:</span>
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.95rem;">
+                            <input type="radio" name="footer-scope" value="all" checked
+                                style="accent-color: var(--primary-color); transform: scale(1.1);">
+                            All Pages
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.95rem;">
+                            <input type="radio" name="footer-scope" value="last"
+                                style="accent-color: var(--primary-color); transform: scale(1.1);">
+                            Last Page Only
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 2rem; align-items: center; margin-top: 1rem;">
+                        <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">Target
+                            Sheets:</span>
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.95rem;">
+                            <input type="checkbox" id="footer-target-timetable" checked
+                                style="accent-color: var(--primary-color); transform: scale(1.1);">
+                            Timetable
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.95rem;">
+                            <input type="checkbox" id="footer-target-seating" checked
+                                style="accent-color: var(--primary-color); transform: scale(1.1);">
+                            Seating Charts
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.95rem;">
+                            <input type="checkbox" id="footer-target-attendance" checked
+                                style="accent-color: var(--primary-color); transform: scale(1.1);">
+                            Attendance
+                        </label>
+                    </div>
+                </div>
             </section>
 
             <section class="glass-card slide-up delay-3" style="margin-top: 2rem; text-align: center;">
@@ -934,27 +1027,36 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
                 }
             }
 
-            /* ── Site Visit Counter (localStorage-based) ── */
-            (function () {
-                const KEY = 'esm_visit_count';
-                let count = parseInt(localStorage.getItem(KEY) || '0', 10);
-                count += 1;
-                localStorage.setItem(KEY, count);
-                const el = document.getElementById('views-count');
-                if (el) {
-                    // Animate count up
-                    let start = 0;
-                    const duration = 900;
-                    const step = (timestamp) => {
-                        if (!step.startTime) step.startTime = timestamp;
-                        const progress = Math.min((timestamp - step.startTime) / duration, 1);
-                        el.textContent = Math.floor(progress * count);
-                        if (progress < 1) requestAnimationFrame(step);
-                        else el.textContent = count;
-                    };
-                    requestAnimationFrame(step);
-                }
-            })();
+            /* ── Printable Footer Toggle ── */
+            const footerToggle = document.getElementById('enable-footer-toggle');
+            const footerDetails = document.getElementById('footer-config-details');
+            if (footerToggle && footerDetails) {
+                footerToggle.addEventListener('change', (e) => {
+                    footerDetails.style.display = e.target.checked ? 'block' : 'none';
+                });
+            }
+
+        })();
+        /* ── Site Visit Counter (localStorage-based) ── */
+        (function () {
+            const KEY = 'esm_visit_count';
+            let count = parseInt(localStorage.getItem(KEY) || '0', 10);
+            count += 1;
+            localStorage.setItem(KEY, count);
+            const el = document.getElementById('views-count');
+            if (el) {
+                // Animate count up
+                let start = 0;
+                const duration = 900;
+                const step = (timestamp) => {
+                    if (!step.startTime) step.startTime = timestamp;
+                    const progress = Math.min((timestamp - step.startTime) / duration, 1);
+                    el.textContent = Math.floor(progress * count);
+                    if (progress < 1) requestAnimationFrame(step);
+                    else el.textContent = count;
+                };
+                requestAnimationFrame(step);
+            }
         })();
     </script>
 
