@@ -962,31 +962,78 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
         <i class="fa-solid fa-chevron-up"></i>
     </button>
 
+    <!-- ===== SCROLL TO BOTTOM BUTTON ===== -->
+    <button id="scroll-to-bottom-btn" title="Scroll down" style="
+            position: fixed;
+            bottom: calc(2rem + 60px);
+            right: 2rem;
+            z-index: 9997;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, var(--bg-card), rgba(139,92,246,0.1));
+            color: var(--primary-color);
+            border: 1px solid rgba(139,92,246,0.3);
+            box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+            opacity: 1;
+            transition: opacity 0.3s ease, transform 0.3s ease, bottom 0.3s ease, box-shadow 0.2s;
+        "
+        onmouseover="this.style.boxShadow='0 6px 24px rgba(139,92,246,0.3)'; this.style.transform='translateY(0) scale(1.08)';"
+        onmouseout="this.style.boxShadow='0 4px 18px rgba(0,0,0,0.15)'; this.style.transform='translateY(0) scale(1)';">
+        <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
     <script>
         (function () {
-            /* ── Back-to-Top Button ── */
-            const btn = document.getElementById('back-to-top-btn');
+            /* ── Back-to-Top & Scroll-to-Bottom Buttons ── */
+            const btnTop = document.getElementById('back-to-top-btn');
+            const btnBottom = document.getElementById('scroll-to-bottom-btn');
             const buffer = document.getElementById('drag-buffer');
 
             function updateBtnPosition() {
                 const bufferVisible = buffer && !buffer.classList.contains('hidden');
-                const bottomVal = bufferVisible ? 'calc(140px + 1.5rem)' : '2rem';
-                btn.style.bottom = bottomVal;
+
+                // Base positions depending on buffer tray
+                const baseTopBtnBottom = bufferVisible ? 'calc(140px + 1.5rem)' : '2rem';
+                btnTop.style.bottom = baseTopBtnBottom;
+
+                // Place bottom btn directly above top btn
+                const baseBottomBtnBottom = bufferVisible ? 'calc(140px + 1.5rem + 60px)' : 'calc(2rem + 60px)';
+                btnBottom.style.bottom = baseBottomBtnBottom;
+
                 // Also shift floating dev credit button up when buffer is visible
                 const devBtn = document.getElementById('dev-credit-float-btn');
-                if (devBtn) devBtn.style.bottom = bottomVal;
+                if (devBtn) devBtn.style.bottom = baseTopBtnBottom;
             }
 
             window.addEventListener('scroll', () => {
-                const visible = window.scrollY > 300;
-                btn.style.opacity = visible ? '1' : '0';
-                btn.style.transform = visible ? 'translateY(0)' : 'translateY(12px)';
-                btn.style.pointerEvents = visible ? 'auto' : 'none';
+                // Top Button Logic (Show when scrolled down)
+                const scrolledDown = window.scrollY > 300;
+                btnTop.style.opacity = scrolledDown ? '1' : '0';
+                btnTop.style.transform = scrolledDown ? 'translateY(0)' : 'translateY(12px)';
+                btnTop.style.pointerEvents = scrolledDown ? 'auto' : 'none';
+
+                // Bottom Button Logic (Hide when reached bottom)
+                const atBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 100);
+                btnBottom.style.opacity = atBottom ? '0' : '0.8';
+                btnBottom.style.transform = atBottom ? 'translateY(12px)' : 'translateY(0)';
+                btnBottom.style.pointerEvents = atBottom ? 'none' : 'auto';
+
                 updateBtnPosition();
             });
 
-            btn.addEventListener('click', () => {
+            btnTop.addEventListener('click', () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            btnBottom.addEventListener('click', () => {
+                window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
             });
 
             const observer = new MutationObserver(updateBtnPosition);
