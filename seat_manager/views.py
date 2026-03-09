@@ -12,12 +12,15 @@ def index(request):
     """Render the main front-end page."""
     return render(request, 'seat_manager/index.html')
 
-def get_active_pattern(year_dict, cols, base_pattern=None):
+def get_active_pattern(year_dict, cols, base_pattern=None, include_empty=False):
     """Generate the repeating pattern of years for columns."""
     if not base_pattern:
         base_pattern = ["IV Yr", "III Yr", "II Yr", "I Yr"]
     # Only include the year if it was requested (in year_dict) and actually has students left
-    active_years = [y for y in base_pattern if y in year_dict and len(year_dict[y]) > 0]
+    if include_empty:
+        active_years = [y for y in base_pattern if y in year_dict]
+    else:
+        active_years = [y for y in base_pattern if y in year_dict and len(year_dict[y]) > 0]
     pattern = []
     
     if not active_years:
@@ -60,6 +63,7 @@ def generate_seating(request):
         branch_name = request.POST.get('branch_name', 'Unknown Branch')
         schedule_config_str = request.POST.get('schedule_config', '[]')
         room_config_str = request.POST.get('room_config', '[]')
+        is_append_room = request.POST.get('is_append_room') == 'true'
 
         if not student_file and not student_data_str:
             return JsonResponse({'error': 'No student file or data provided.'}, status=400)
@@ -240,13 +244,20 @@ def generate_seating(request):
                 
                     if rows <= 0 or cols <= 0: continue
                     # Check if there are any students left to place
-                    if not any(len(lst) > 0 for lst in session_year_dict.values()):
+                    has_students_left = any(len(lst) > 0 for lst in session_year_dict.values())
+                    if not has_students_left and not is_append_room:
                         break # All students placed for this session
                     
                     seating = [["" for _ in range(cols)] for _ in range(rows)]
                     year_map = [["" for _ in range(cols)] for _ in range(rows)]
                     
-                    column_pattern = get_active_pattern(session_year_dict, cols, custom_pattern)
+                    column_pattern = get_active_pattern(session_year_dict, cols, custom_pattern, include_empty=is_append_room)
+                    
+                    # Pre-fill year_map based on column_pattern so empty inserted rooms have strict year structure
+                    for c_idx in range(cols):
+                        if c_idx < len(column_pattern):
+                            for r_idx in range(rows):
+                                year_map[r_idx][c_idx] = column_pattern[c_idx]
                     
                     # Place students
                     for col in range(cols):
@@ -355,6 +366,14 @@ def generate_seating(request):
                                 else:
                                     room_students.append({
                                         'enrollment': student_obj,
+                                        'name': '',
+                                        'year': year_map[r][c]
+                                    })
+                            elif is_append_room:
+                                # For an empty added room, provide blank rows with the designated year
+                                if year_map[r][c]:
+                                    room_students.append({
+                                        'enrollment': '',
                                         'name': '',
                                         'year': year_map[r][c]
                                     })

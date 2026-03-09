@@ -377,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('branch_name', document.getElementById('department-name').value.trim() || 'General');
 
             // 2. Schedule Config (Must match the existing active session perfectly)
-            formData.append('schedule_config', JSON.stringify(window.activePreset.timelineSetup));
+            formData.append('schedule_config', window.activePreset.scheduleConfigStr);
 
             // 3. Room Config (Just this single extra room)
             const newRoomConfig = [{
@@ -387,6 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 seating_pattern: document.getElementById('add-room-pattern').value
             }];
             formData.append('room_config', JSON.stringify(newRoomConfig));
+            formData.append('is_append_room', 'true');
 
             // 4. Student Data (File or Empty map)
             const fileInput = document.getElementById('add-room-student-file');
