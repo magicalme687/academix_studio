@@ -17,6 +17,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'seat_manager',
+    'core',
+    'timetable',
+    'practical_exam',
 ]
 
 MIDDLEWARE = [

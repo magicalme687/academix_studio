@@ -1,0 +1,165 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Matrix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'seat_manager/style_v2.css' %}">
+    <style>
+        body {
+            padding: 2rem;
+        }
+
+        .matrix-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 2rem;
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .cell-content {
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .cell-subject {
+            font-weight: 700;
+            color: var(--text-main);
+            font-size: 1rem;
+        }
+
+        .cell-faculty {
+            color: #3b82f6;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .cell-room {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .type-lab {
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .type-break {
+            background: rgba(0, 0, 0, 0.1);
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.1em;
+        }
+
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .nav-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--primary-color);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header-controls">
+        <a href="{% url 'generate_timetable' %}" class="nav-btn"><i class="fa-solid fa-arrow-left"></i> Back to
+            Generator</a>
+        <h1 style="margin: 0; font-size: 2rem;" class="gradient-text"><i class="fa-solid fa-table"></i> Master
+            Timetable: {{ department.name }}</h1>
+        <button class="nav-btn" onclick="window.print()" style="color: #10B981; border-color: #10B981;"><i
+                class="fa-solid fa-print"></i> Print / Export PDF</button>
+    </div>
+
+    <!-- For each class section, render a separate timetable table -->
+    {% for section, days_dict in matrix_data.items %}
+    <div style="margin-bottom: 4rem;">
+        <h2
+            style="color: var(--text-main); margin-bottom: 1rem; border-left: 4px solid var(--primary-color); padding-left: 1rem;">
+            Section: {{ section.name }}</h2>
+        <div class="matrix-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">Day \ Time</th>
+                        {% for slot in slots %}
+                        <th>{{ slot.start_time|time:"H:i" }} - {{ slot.end_time|time:"H:i" }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day, slots_dict in days_dict.items %}
+                    <tr>
+                        <th style="text-transform: capitalize;">{{ day|lower }}</th>
+                        {% for slot, e in slots_dict.items %}
+                        {% if e %}
+                        <td
+                            class="{% if e.session_type == 'LAB' %}type-lab{% elif e.session_type == 'BREAK' or e.session_type == 'LUNCH' %}type-break{% endif %}">
+                            {% if e.session_type == 'BREAK' or e.session_type == 'LUNCH' %}
+                            {{ e.session_type }}
+                            {% else %}
+                            <div class="cell-content">
+                                <span class="cell-subject">{{ e.subject.code }} ({{ e.session_type|slice:":1" }})</span>
+                                <span class="cell-faculty">{{ e.faculty.short_code }}</span>
+                                <span class="cell-room">{{ e.room.name }}</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        {% else %}
+                        <td><span style="color: #cbd5e1; font-weight: 300;">Free</span></td>
+                        {% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</body>
+
+</html>

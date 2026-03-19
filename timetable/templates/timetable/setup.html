@@ -1,0 +1,305 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syllabus Scheme Setup | Academic Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'seat_manager/style_v2.css' %}">
+    <style>
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background: rgba(0, 0, 0, 0.1);
+            margin-top: 1rem;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary-color);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .btn-primary {
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: 0.3s;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            padding: 0.8rem 1.5rem;
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: 0.3s;
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .subject-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .subject-card {
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .subject-code {
+            font-weight: 700;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+
+        .subject-name {
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0.5rem 0;
+            font-size: 1rem;
+        }
+
+        .subject-meta {
+            display: flex;
+            gap: 1rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .meta-badge {
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .top-nav {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+
+<body data-theme="dark">
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+    </div>
+
+    <div class="top-nav fade-in">
+        <button class="nav-btn" onclick="toggleTheme()" id="theme-btn">
+            <i class="fa-solid fa-sun"></i>
+        </button>
+        <a href="{% url 'timetable_dashboard' %}" class="nav-btn"><i class="fa-solid fa-arrow-left"></i></a>
+    </div>
+
+    <main class="container">
+        <header class="hero-section fade-in">
+            <h1 class="gradient-text"><i class="fa-solid fa-cloud-arrow-up"></i> Scheme Importer</h1>
+            <p>Department of {{ department.name }} ({{ department.code }})</p>
+        </header>
+
+        {% if messages %}
+        <div class="slide-up">
+            {% for message in messages %}
+            <div
+                style="padding: 1rem; border-radius: 12px; font-weight: 500; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem; background: {% if message.tags == 'success' %}rgba(16, 185, 129, 0.1){% else %}rgba(239, 68, 68, 0.1){% endif %}; color: {% if message.tags == 'success' %}#10B981{% else %}#EF4444{% endif %}; border: 1px solid {% if message.tags == 'success' %}rgba(16,185,129,0.2){% else %}rgba(239,68,68,0.2){% endif %};">
+                <i
+                    class="fa-solid {% if message.tags == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <section class="glass-card slide-up delay-1">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h2><i class="fa-solid fa-file-excel" style="color: #10B981;"></i> Upload Multi-Sheet Excel</h2>
+                    <p class="subtitle" style="margin-top: 0.5rem;">Upload the University Scheme containing sheets for
+                        Sem 1 - 8. The system will automatically parse the L-T-P credits.</p>
+                </div>
+                <a href="{% url 'download_scheme_template' %}" class="btn-outline"><i class="fa-solid fa-download"></i>
+                    Download Template</a>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label for="scheme_file" class="upload-zone" style="display: block;">
+                    <i class="fa-solid fa-cloud-arrow-up"
+                        style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                    <h3 style="color: var(--text-main); margin: 0 0 0.5rem 0;">Click to upload or drag and drop</h3>
+                    <p style="color: var(--text-muted); margin: 0;">XLSX files only</p>
+                    <input type="file" name="scheme_file" id="scheme_file" accept=".xlsx" style="display: none;"
+                        required onchange="document.getElementById('filename-display').innerText = this.files[0].name">
+                </label>
+                <div id="filename-display"
+                    style="text-align: center; margin-top: 1rem; font-weight: 500; color: var(--text-main);"></div>
+
+                <div style="text-align: right; margin-top: 1.5rem;">
+                    <button type="submit" class="btn-primary"><i class="fa-solid fa-gears"></i> Process Scheme
+                        Data</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="glass-card slide-up delay-2" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-database" style="color: #3b82f6;"></i> Saved Subjects Overview <span
+                        style="font-size: 1rem; background: rgba(59,130,246,0.1); padding: 0.2rem 0.8rem; border-radius: 20px; color: #3b82f6; vertical-align: middle; margin-left: 0.5rem;">
+                        {{ subjects.count }}
+                    </span></h2>
+            </div>
+
+            {% if subjects %}
+            {% regroup subjects by semester as semester_groups %}
+
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+                {% for sem_group in semester_groups %}
+                <div
+                    style="background: rgba(0,0,0,0.15); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; transition: 0.3s;">
+                    <div onclick="document.getElementById('sem-{{ sem_group.grouper }}').classList.toggle('hidden'); document.getElementById('icon-{{ sem_group.grouper }}').classList.toggle('fa-chevron-down'); document.getElementById('icon-{{ sem_group.grouper }}').classList.toggle('fa-chevron-up');"
+                        style="padding: 1.2rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: rgba(139, 92, 246, 0.05); user-select: none;">
+                        <h3
+                            style="margin: 0; color: var(--text-main); font-size: 1.1rem; display: flex; align-items: center; gap: 0.75rem;">
+                            <i class="fa-solid fa-layer-group" style="color: #8b5cf6;"></i>
+                            Semester {{ sem_group.grouper }}
+                            <span
+                                style="font-size: 0.75rem; background: rgba(139, 92, 246, 0.2); color: #c4b5fd; padding: 0.2rem 0.6rem; border-radius: 12px; font-weight: 600;">
+                                {{ sem_group.list|length }} Subjects
+                            </span>
+                        </h3>
+                        <i id="icon-{{ sem_group.grouper }}"
+                            class="fa-solid {% if forloop.first %}fa-chevron-up{% else %}fa-chevron-down{% endif %}"
+                            style="color: var(--text-muted); transition: 0.3s;"></i>
+                    </div>
+
+                    <div id="sem-{{ sem_group.grouper }}" class="{% if not forloop.first %}hidden{% endif %}"
+                        style="padding: 0 1.5rem 1.5rem 1.5rem;">
+                        <div class="subject-grid" style="margin-top: 1rem;">
+                            {% for sub in sem_group.list %}
+                            <div class="subject-card">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <span class="subject-code">{{ sub.code }}</span>
+                                    <span class="meta-badge">
+                                        {% if sub.is_elective %}
+                                        Elective
+                                        {% else %}
+                                        Core
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <p class="subject-name">{{ sub.name }}</p>
+                                <div class="subject-meta" style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+                                    <span title="Lecture Hours">
+                                        <i class="fa-solid fa-person-chalkboard" style="opacity: 0.7;"></i>
+                                        L: {{ sub.lecture_hours_per_week }}
+                                    </span>
+                                    <span title="Tutorial Hours">
+                                        <i class="fa-solid fa-users-viewfinder" style="opacity: 0.7;"></i>
+                                        T: {{ sub.tutorial_hours_per_week }}
+                                    </span>
+                                    <span title="Practical/Lab Hours">
+                                        <i class="fa-solid fa-flask" style="opacity: 0.7;"></i>
+                                        P: {{ sub.lab_hours_per_week }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 4rem 2rem; color: var(--text-muted);">
+                <i class="fa-solid fa-folder-open" style="font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <p style="font-size: 1.1rem;">No subjects found. Please upload the university scheme template to
+                    populate records.</p>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                body.removeAttribute('data-theme');
+                document.querySelector('#theme-btn i').classList.replace('fa-sun', 'fa-moon');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                document.querySelector('#theme-btn i').classList.replace('fa-moon', 'fa-sun');
+            }
+        }
+    </script>
+</body>
+
+</html>

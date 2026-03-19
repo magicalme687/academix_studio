@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     window.tableDataMap = {};
     window.isEditMode = false;
     // --- Theme Toggle ---
@@ -1859,7 +1859,7 @@
             if (h3) sheetName = h3.textContent.replace('SEATING CHART', '').trim().substring(0, 30).replace(/[\\/?*[\]]/g, '');
             else {
                 const h1 = container.querySelector('h1');
-                if (h1 && h1.textContent !== 'IPS Academy, Institute of Engineering and Science') sheetName = h1.textContent.substring(0, 30).replace(/[\\/?*[\]]/g, '');
+                if (h1 && h1.textContent !== 'Your Institute Name' && h1.textContent.trim() !== '') sheetName = h1.textContent.substring(0, 30).replace(/[\\/?*[\]]/g, '');
             }
 
             // Ensure unique names

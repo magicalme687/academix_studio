@@ -1,0 +1,2014 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A beautiful and modern practical examination sheet generator.">
+    <title>Practical Examination Evaluator</title>
+    <link rel="icon" type="image/png" href="{% static 'seat_manager/favicon.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Reusing Seat Manager stylesheet for cohesive aesthetic -->
+    <link rel="stylesheet" href="{% static 'seat_manager/style_v2.css' %}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        .section-config-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .section-config-row .input-wrapper {
+            margin-bottom: 0;
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #sheets-container, #sheets-container * {
+                visibility: visible;
+            }
+            #sheets-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+            }
+            @page { size: A4 portrait; margin: 0; }
+            body { background: white; }
+            .print-page { 
+                margin: 0 !important; 
+                border: none !important; 
+                box-shadow: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            /* Hide the dark mode background and effects */
+            .background-effects, .main-content > *:not(#results-area) {
+                display: none !important;
+            }
+            .header-table, .header-table th, .header-table td {
+                border: none !important;
+            }
+            .print-page, .print-page * {
+                font-family: 'Times New Roman', serif !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+    </div>
+
+    <main class="container">
+        <!-- Controls -->
+        <div style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000; display: flex; flex-direction: column; gap: 0.6rem;">
+            <button id="theme-toggle" class="btn outline-btn" aria-label="Toggle Dark/Light Mode"
+                style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                <i class="fa-solid fa-sun" id="theme-icon" style="font-size: 1.25rem;"></i>
+            </button>
+            <button id="history-btn" class="btn outline-btn" aria-label="Configuration History"
+                style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border-color); cursor: pointer; color: var(--text-main); font-size: 1.25rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </button>
+            <button id="help-btn" class="btn outline-btn" aria-label="Help & Guide"
+                style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border-color); cursor: pointer; color: var(--text-main); font-size: 1.25rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-circle-question"></i>
+            </button>
+            <a href="/" class="btn outline-btn" aria-label="Home"
+                style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border-color); cursor: pointer; color: var(--primary-color); font-size: 1.25rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; text-decoration: none;">
+                <i class="fa-solid fa-home"></i>
+            </a>
+        </div>
+
+        <header class="hero-section fade-in">
+            <h1 class="gradient-text"><i class="fa-solid fa-clipboard-list"></i> Practical Examination</h1>
+            <p>Generate precise Attendance and Marks evaluation sheets instantly.</p>
+        </header>
+
+        <!-- Configuration Step 1 -->
+        <section id="config-section" class="glass-card slide-up delay-1">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-sliders"></i> Context Setup</h2>
+                <p class="subtitle">Provide the metadata for the practical exam headers.</p>
+            </div>
+
+            <form id="base-config-form" class="grid-2-col">
+                <!-- Header Metadata -->
+                <div class="input-wrapper floating-label" style="grid-column: span 2;">
+                    <input type="text" id="institute-name" placeholder=" " required
+                        value="IPS Academy, Institute of Engg. & Science, Indore (0808)">
+                    <label for="institute-name">Centre Name</label>
+                    <i class="fa-solid fa-university input-icon"></i>
+                </div>
+                <div class="input-wrapper floating-label">
+                    <select id="branch-name" required
+                        style="width: 100%; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem 1rem 0.5rem 3rem; color: var(--text-main); font-size: 1.1rem; font-family: 'Outfit', sans-serif; appearance: none;">
+                        <option value="Civil Engineering">Civil Engineering</option>
+                        <option value="Chemical Engineering">Chemical Engineering</option>
+                        <option value="Computer Science & Engineering">Computer Science & Engineering</option>
+                        <option value="Computer Science & Information Technology" selected>Computer Science & Information Technology</option>
+                        <option value="CSE (Data Science)">CSE (Data Science)</option>
+                        <option value="CSE (AIML)">CSE (AIML)</option>
+                        <option value="CSE (IoT & CSITCS)">CSE (IoT & CSITCS)</option>
+                        <option value="Electronics & Communication Engineering">Electronics & Communication Engineering</option>
+                        <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
+                        <option value="Fire Tech & Safety Engineering">Fire Tech & Safety Engineering</option>
+                        <option value="Mechanical Engineering">Mechanical Engineering</option>
+                        <option value="B.Tech First Year">B.Tech First Year</option>
+                        <option value="Custom">Custom (Type Below)</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down"
+                        style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"></i>
+                    <label for="branch-name">Branch</label>
+                    <i class="fa-solid fa-code-branch input-icon"></i>
+                </div>
+
+                <div class="input-wrapper floating-label hidden" id="custom-branch-wrapper" style="grid-column: span 2;">
+                    <input type="text" id="custom-branch-name" placeholder=" ">
+                    <label for="custom-branch-name">Custom Branch Name</label>
+                    <i class="fa-solid fa-pen input-icon"></i>
+                </div>
+                
+                <div class="input-wrapper floating-label">
+                    <select id="exam-session" required style="width: 100%; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem 1rem 0.5rem 3rem; color: var(--text-main); font-size: 1.1rem; font-family: 'Outfit', sans-serif; appearance: none;">
+                        <option value="Odd">Odd (Jul-Dec)</option>
+                        <option value="Even" selected>Even (Jan-Jun)</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"></i>
+                    <label for="exam-session">Session</label>
+                    <i class="fa-solid fa-calendar-days input-icon"></i>
+                </div>
+                <div class="input-wrapper floating-label">
+                    <input type="number" id="exam-year" placeholder=" " required value="26">
+                    <label for="exam-year">Year (e.g., 26)</label>
+                    <i class="fa-solid fa-calendar input-icon"></i>
+                </div>
+
+
+                <!-- Subject Source -->
+                <div class="input-wrapper" style="grid-column: span 2;">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500; white-space: nowrap;">
+                            <i class="fa-solid fa-table-list" style="margin-right: 5px; color: var(--primary-color);"></i>Subject Source
+                        </span>
+                        <input type="radio" name="subject-source" id="src-excel" value="excel" checked style="display:none;">
+                        <input type="radio" name="subject-source" id="src-manual" value="manual" style="display:none;">
+                        <div style="display: inline-flex; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 10px; padding: 4px; gap: 4px;">
+                            <label for="src-excel" id="pill-excel" style="cursor: pointer; padding: 0.45rem 1.1rem; border-radius: 7px; font-size: 0.9rem; font-weight: 600; transition: all 0.2s ease; background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); color: white; box-shadow: 0 2px 8px rgba(139,92,246,0.35);">
+                                <i class="fa-solid fa-file-excel" style="margin-right: 5px;"></i>Upload Excel
+                            </label>
+                            <label for="src-manual" id="pill-manual" style="cursor: pointer; padding: 0.45rem 1.1rem; border-radius: 7px; font-size: 0.9rem; font-weight: 600; transition: all 0.2s ease; color: var(--text-muted);">
+                                <i class="fa-solid fa-keyboard" style="margin-right: 5px;"></i>Manual Entry
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subject-source-excel" style="grid-column: span 2; display: flex; flex-direction: column; gap: 0.3rem;">
+                    <div class="input-wrapper floating-label" style="margin-bottom: 0;">
+                        <input type="file" id="subject-file" accept=".xlsx, .xls" required>
+                        <label for="subject-file" style="top:-10px; font-size: 0.8rem; background: var(--bg-card);">Subject Codes (Excel)</label>
+                        <i class="fa-solid fa-book input-icon"></i>
+                    </div>
+                    <div style="text-align: right; padding-right: 0.5rem;">
+                        <a href="/static/seat_manager/sample/subjects_test.xlsx" download style="font-size: 0.82rem; color: var(--primary-color); text-decoration: none; font-weight: 600; transition: color 0.2s;"><i class="fa-solid fa-download"></i> Download Sample Excel</a>
+                    </div>
+                </div>
+
+                <div class="subject-source-manual hidden" style="grid-column: span 2;">
+                    <div class="grid-2-col" style="gap: 1rem;">
+                        <div class="input-wrapper floating-label">
+                            <input type="text" id="manual-subj-i" placeholder=" ">
+                            <label for="manual-subj-i">I Yr Subjects (comma separated)</label>
+                            <i class="fa-solid fa-pen input-icon"></i>
+                        </div>
+                        <div class="input-wrapper floating-label">
+                            <input type="text" id="manual-subj-ii" placeholder=" ">
+                            <label for="manual-subj-ii">II Yr Subjects (comma separated)</label>
+                            <i class="fa-solid fa-pen input-icon"></i>
+                        </div>
+                        <div class="input-wrapper floating-label">
+                            <input type="text" id="manual-subj-iii" placeholder=" ">
+                            <label for="manual-subj-iii">III Yr Subjects (comma separated)</label>
+                            <i class="fa-solid fa-pen input-icon"></i>
+                        </div>
+                        <div class="input-wrapper floating-label">
+                            <input type="text" id="manual-subj-iv" placeholder=" ">
+                            <label for="manual-subj-iv">IV Yr Subjects (comma separated)</label>
+                            <i class="fa-solid fa-pen input-icon"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="grid-column: span 2; display: flex; gap: 1rem;">
+                    <div class="input-wrapper floating-label" style="flex: 1;">
+                        <input type="number" id="max-marks" placeholder=" " required value="60">
+                        <label for="max-marks">Maximum Marks</label>
+                        <i class="fa-solid fa-arrow-up-9-1 input-icon"></i>
+                    </div>
+                    <div class="input-wrapper floating-label" style="flex: 1;">
+                        <input type="number" id="min-marks" placeholder=" " required value="30">
+                        <label for="min-marks">Minimum Marks</label>
+                        <i class="fa-solid fa-arrow-down-1-9 input-icon"></i>
+                    </div>
+                </div>
+
+                <!-- Semester Selection for Student Data Extraction -->
+                <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; margin-bottom: 0.5rem; padding: 1rem; background: rgba(139,92,246,0.05); border: 1px dashed rgba(139,92,246,0.3); border-radius: 12px;">
+                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--primary-color);">Select Semesters to Import</label>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Only data for the respective years of selected semesters will be extracted from the uploaded Excel file.</p>
+                    <div id="semester-checkboxes-container" style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                        <!-- Dynamically populated by JS based on Session (Odd/Even) -->
+                    </div>
+                </div>
+
+                <!-- Student File Upload -->
+                <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 0.3rem;">
+                    <div class="input-wrapper floating-label" style="margin-bottom: 0px; padding-top: 0.75rem;">
+                        <input type="file" id="student-file" accept=".xlsx, .xls" required>
+                        <label for="student-file" style="top: 10px; font-size: 0.75rem; background: var(--bg-card); color: var(--primary-color); font-weight: 500;">Student List (Excel)</label>
+                        <i class="fa-solid fa-users input-icon"></i>
+                    </div>
+                    <div style="text-align: right; padding-right: 0.5rem; margin-bottom: 0.5rem;">
+                        <a href="/static/seat_manager/sample/student_data.xlsx" download style="font-size: 0.82rem; color: var(--primary-color); text-decoration: none; font-weight: 600; transition: color 0.2s;"><i class="fa-solid fa-download"></i> Download Sample Excel</a>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- Subject Date Allotment Section -->
+        <section id="subject-allotment-section" class="glass-card slide-up delay-2" style="margin-top: 1rem;">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-calendar-check"></i> Subject Date Allotment</h2>
+                <p class="subtitle">Assign dates for the subjects loaded from the Target Years.</p>
+            </div>
+            
+            <button type="button" id="load-subjects-btn" class="btn outline-btn" style="width: 100%; margin-bottom: 1rem;">
+                <i class="fa-solid fa-rotate"></i> Load Subjects from Selection
+            </button>
+            
+            <div id="subject-dates-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Dynamically populated subjects and dates will go here -->
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 1rem;">
+                    Upload Subject Excel and check Target Years, then click 'Load Subjects' to allot dates.
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Division Module -->
+        <section id="division-section" class="glass-card slide-up delay-2" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-scissors"></i> Section Division</h2>
+                <p class="subtitle">Split the uploaded class into smaller evaluation sections per Target Year.</p>
+            </div>
+
+            <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-circle-info"></i> Sections are grouped by the Target Years mapped from your selected semesters. Add or remove sections dynamically below.</p>
+            </div>
+
+            <div id="section-configs-container" style="margin-top: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.1); border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Dynamically generated rows go here -->
+            </div>
+
+            <div style="text-align: right; margin-top: 2rem;">
+                <button type="button" class="btn primary-btn" id="generate-btn">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Sheets
+                </button>
+            </div>
+        </section>
+
+        <!-- Results Area -->
+        <section id="results-area" class="slide-up hidden" style="margin-top: 2rem;">
+            <div style="display: flex; gap: 1rem; margin-bottom: 2rem; align-items: center;">
+                <button class="btn secondary-btn" onclick="document.getElementById('edit-config-btn').click()">
+                    <i class="fa-solid fa-arrow-left"></i> Edit Config
+                </button>
+                <div style="margin-left: auto; display: flex; gap: 1.5rem; align-items: center;">
+                    <label style="display: flex; align-items: center; cursor: pointer; color: var(--text-main); font-weight: 500; font-size: 0.95rem; background: rgba(0,0,0,0.1); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <input type="checkbox" id="autofill-header-footer" checked style="margin-right: 8px; width: 18px; height: 18px; accent-color: var(--primary-color);"> Auto-fill Exam Details
+                    </label>
+                    <button class="btn print-btn" id="export-pdf-btn">
+                        <i class="fa-solid fa-file-pdf"></i> Export to PDF
+                    </button>
+                    <button class="btn print-btn" id="export-excel-btn" style="background: linear-gradient(135deg, #10B981, #059669);">
+                        <i class="fa-solid fa-file-excel"></i> Export to Excel
+                    </button>
+                </div>
+            </div>
+            
+            <div id="print-filters-container" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;"></div>
+
+            <div id="sheets-container" style="background: white; border-radius: 8px; padding: 2rem; color: black; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow-x: auto;">
+                <!-- HTML Sheets will be injected here -->
+            </div>
+        </section>
+        
+        <!-- Hidden button for reverting UI state -->
+        <button id="edit-config-btn" style="display: none;"></button>
+
+        <!-- ═══════════════════════════════════════════
+             CREDITS SECTION
+        ═══════════════════════════════════════════ -->
+        <div class="credits-card fade-in slide-up delay-2" style="
+            margin-top: 3rem;
+            padding: 1.5rem 2rem;
+            background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(59,130,246,0.08));
+            border: 1px solid rgba(139,92,246,0.25);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        ">
+            <!-- Glowing accent line -->
+            <div style="
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, #8b5cf6, #3b82f6, #06b6d4, #8b5cf6);
+                background-size: 200%;
+                animation: gradientShift 3s linear infinite;
+            "></div>
+
+            <!-- Avatar -->
+            <div style="position: relative; flex-shrink: 0;">
+                <div style="
+                    width: 72px; height: 72px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                    padding: 3px;
+                    box-shadow: 0 0 20px rgba(139,92,246,0.5);
+                ">
+                    <img src="{% static 'seat_manager/emoji.png' %}" alt="Yash Parashar"
+                        style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;">
+                </div>
+                <div style="
+                    position: absolute; bottom: -2px; right: -2px;
+                    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                    border-radius: 50%; width: 22px; height: 22px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 0.7rem; border: 2px solid var(--bg-dark);
+                ">✨</div>
+            </div>
+
+            <!-- Text block -->
+            <div style="text-align: left;">
+                <div
+                    style="font-size: 0.7rem; color: var(--accent-color); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.2rem;">
+                    <i class="fa-solid fa-code" style="margin-right: 4px;"></i>Crafted &amp; Developed by
+                </div>
+                <div
+                    style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                    Asst. Prof. Yash Parashar
+                    <span style="
+                        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                        color: white;
+                        font-size: 0.6rem;
+                        padding: 2px 8px;
+                        border-radius: 20px;
+                        font-weight: 600;
+                        letter-spacing: 0.05em;
+                        vertical-align: middle;
+                    ">FACULTY</span>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.15rem;">
+                    <i class="fa-solid fa-building-columns" style="margin-right: 4px; color: var(--primary-color);"></i>
+                    Dept. of CS &amp; IT &nbsp;•&nbsp; IPS Academy
+                </div>
+            </div>
+
+            <!-- Right badge -->
+            <div style="margin-left: auto; text-align: center; opacity: 0.6;">
+                <div style="font-size: 1.8rem;">🎓</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; font-weight: 500;">IPS
+                    Academy</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== BACK TO TOP BUTTON ===== -->
+    <button id="back-to-top-btn" title="Back to top" style="
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9997;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: #fff;
+            box-shadow: 0 4px 18px rgba(139,92,246,0.45);
+            opacity: 0;
+            transform: translateY(12px);
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease, bottom 0.3s ease, box-shadow 0.2s;
+        "
+        onmouseover="this.style.boxShadow='0 6px 24px rgba(139,92,246,0.65)'; this.style.transform='translateY(0) scale(1.08)';"
+        onmouseout="this.style.boxShadow='0 4px 18px rgba(139,92,246,0.45)'; this.style.transform='translateY(0) scale(1)';">
+        <i class="fa-solid fa-chevron-up"></i>
+    </button>
+
+    <!-- ===== SCROLL TO BOTTOM BUTTON ===== -->
+    <button id="scroll-to-bottom-btn" title="Scroll down" style="
+            position: fixed;
+            bottom: calc(2rem + 60px);
+            right: 2rem;
+            z-index: 9997;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, var(--bg-card), rgba(139,92,246,0.1));
+            color: var(--primary-color);
+            border: 1px solid rgba(139,92,246,0.3);
+            box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+            opacity: 1;
+            transition: opacity 0.3s ease, transform 0.3s ease, bottom 0.3s ease, box-shadow 0.2s;
+        "
+        onmouseover="this.style.boxShadow='0 6px 24px rgba(139,92,246,0.3)'; this.style.transform='translateY(0) scale(1.08)';"
+        onmouseout="this.style.boxShadow='0 4px 18px rgba(0,0,0,0.15)'; this.style.transform='translateY(0) scale(1)';">
+        <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <!-- ===== FLOATING DEV CREDIT ICON ===== -->
+    <button id="dev-credit-float-btn" title="Developed by Asst. Prof. Yash Parashar" aria-label="Developer Credits"
+        style="
+            position: fixed;
+            bottom: 2rem;
+            left: 1.5rem;
+            z-index: 9997;
+            background: rgba(24,24,27,0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 30px;
+            padding: 0.4rem 0.85rem 0.4rem 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+            opacity: 0.55;
+            transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s;
+            box-shadow: 0 2px 12px rgba(139,92,246,0.18);
+            animation: devFloatPulse 4s ease-in-out infinite;
+        "
+        onmouseover="this.style.opacity='1'; this.style.boxShadow='0 4px 20px rgba(139,92,246,0.45)'; this.style.color='var(--text-main)';"
+        onmouseout="this.style.opacity='0.55'; this.style.boxShadow='0 2px 12px rgba(139,92,246,0.18)'; this.style.color='var(--text-muted)';">
+        <img src="{% static 'seat_manager/emoji.png' %}" alt=""
+            style="width:22px; height:22px; border-radius:50%; object-fit:cover; border:1px solid rgba(139,92,246,0.4);">
+        <span>Developed by <strong style="color: var(--primary-color);">Asst. Prof. Yash Parashar</strong></span>
+    </button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            /* ── Back-to-Top & Scroll-to-Bottom Buttons ── */
+            const btnTop = document.getElementById('back-to-top-btn');
+            const btnBottom = document.getElementById('scroll-to-bottom-btn');
+
+            window.addEventListener('scroll', () => {
+                // Top Button Logic (Show when scrolled down)
+                const scrolledDown = window.scrollY > 300;
+                btnTop.style.opacity = scrolledDown ? '1' : '0';
+                btnTop.style.transform = scrolledDown ? 'translateY(0)' : 'translateY(12px)';
+                btnTop.style.pointerEvents = scrolledDown ? 'auto' : 'none';
+
+                // Bottom Button Logic (Hide when reached bottom)
+                const atBottom = (window.innerHeight + window.scrollY) >= (document.body.offsetHeight - 100);
+                btnBottom.style.opacity = atBottom ? '0' : '0.8';
+                btnBottom.style.transform = atBottom ? 'translateY(12px)' : 'translateY(0)';
+                btnBottom.style.pointerEvents = atBottom ? 'none' : 'auto';
+            });
+
+            btnTop.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            btnBottom.addEventListener('click', () => {
+                window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
+            });
+
+            const devBtn = document.getElementById('dev-credit-float-btn');
+            if (devBtn) {
+                devBtn.addEventListener('click', () => {
+                    const creditsCard = document.querySelector('.credits-card');
+                    if (creditsCard) {
+                        creditsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        creditsCard.style.transition = 'box-shadow 0.3s ease';
+                        creditsCard.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.6)';
+                        setTimeout(() => { creditsCard.style.boxShadow = ''; }, 1800);
+                    }
+                    devBtn.style.opacity = '0';
+                    devBtn.style.pointerEvents = 'none';
+                    devBtn.style.transform = 'translateY(10px)';
+                });
+
+                const creditsCard = document.querySelector('.credits-card');
+                if (creditsCard && 'IntersectionObserver' in window) {
+                    const obs = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                devBtn.style.opacity = '0';
+                                devBtn.style.pointerEvents = 'none';
+                                devBtn.style.transform = 'translateY(10px)';
+                            } else {
+                                devBtn.style.opacity = '0.55';
+                                devBtn.style.pointerEvents = 'auto';
+                                devBtn.style.transform = 'translateY(0)';
+                            }
+                        });
+                    }, { threshold: 0.1 });
+                    obs.observe(creditsCard);
+                }
+            }
+        });
+        // Theme toggler
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'light' || (!savedTheme && !prefersDark)) {
+            document.body.classList.add('light-mode');
+            themeIcon.classList.replace('fa-sun', 'fa-moon');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            if (document.body.classList.contains('light-mode')) {
+                themeIcon.classList.replace('fa-sun', 'fa-moon');
+                localStorage.setItem('theme', 'light');
+            } else {
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+
+        // Dynamic Section Config Rows
+        const configContainer = document.getElementById('section-configs-container');
+
+        function renderSectionInputs() {
+            const selectedSemCheckboxes = Array.from(document.querySelectorAll('input[name="target_semesters"]:checked'));
+            const mappedYears = [...new Set(selectedSemCheckboxes.map(cb => cb.dataset.mappedYear))];
+            
+            configContainer.innerHTML = '';
+            
+            if (mappedYears.length === 0) {
+                configContainer.innerHTML = '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">Please select Semesters to import subjects for first.</div>';
+                return;
+            }
+
+            mappedYears.forEach(targetYear => {
+                const yearGroup = document.createElement('div');
+                yearGroup.className = 'year-section-group slide-up';
+                yearGroup.dataset.year = targetYear;
+                yearGroup.style.cssText = 'padding: 1.5rem; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+                
+                yearGroup.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+                        <h4 style="color: var(--primary-color); margin: 0; font-size: 1.1rem;"><i class="fa-solid fa-layer-group"></i> ${targetYear} Sections</h4>
+                        <button type="button" class="btn outline-btn add-year-sec-btn" data-year="${targetYear}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;"><i class="fa-solid fa-plus"></i> Add Section</button>
+                    </div>
+                    <div class="year-rows-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                    </div>
+                `;
+                
+                configContainer.appendChild(yearGroup);
+                addSectionRow(yearGroup.querySelector('.year-rows-container'), targetYear); // Add first row default
+            });
+        }
+
+        function autoDistributeSections(targetYear) {
+            const group = document.querySelector(`.year-section-group[data-year="${targetYear}"]`);
+            if (!group) return;
+            const container = group.querySelector('.year-rows-container');
+            const rows = container.querySelectorAll('.section-config-row');
+            const limit = window.studentCounts[targetYear] || 0;
+            const numSections = rows.length;
+            
+            if (limit === 0 || numSections === 0) return;
+            
+            const baseSize = Math.floor(limit / numSections);
+            let remainder = limit % numSections;
+            
+            let currentStart = 1;
+            rows.forEach((row, idx) => {
+                let size = baseSize;
+                if (remainder > 0) {
+                    size += 1;
+                    remainder--;
+                }
+                const end = currentStart + size - 1;
+                
+                row.querySelector('.sec-start').value = currentStart;
+                row.querySelector('.sec-end').value = end;
+                
+                currentStart = end + 1;
+            });
+        }
+
+        function addSectionRow(container, targetYear) {
+            const rows = container.querySelectorAll('.section-config-row');
+            let nextStart = 1;
+            let nextName = "Section " + (rows.length + 1);
+            
+            if (rows.length > 0) {
+                const lastRow = rows[rows.length - 1];
+                const lastEnd = parseInt(lastRow.querySelector('.sec-end').value);
+                if (!isNaN(lastEnd)) nextStart = lastEnd + 1;
+                
+                const lastName = lastRow.querySelector('.sec-name').value;
+                const match = lastName.match(/^(.*?[^\d])(\d+)$/);
+                if (match) {
+                    nextName = match[1] + (parseInt(match[2]) + 1);
+                } else if (lastName.trim() !== '') {
+                    nextName = lastName + " " + (rows.length + 1);
+                }
+            }
+            
+            let defaultEnd = "";
+            let newRowHtml = `
+            <div class="section-config-row" data-year="${targetYear}" style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: center;">
+                <div class="input-wrapper floating-label" style="margin-bottom: 0;">
+                    <input type="text" class="sec-name" placeholder=" " value="${nextName}" required>
+                    <label>Section Name</label>
+                </div>
+                <!-- Hidden Target Year -->
+                <input type="hidden" class="sec-year" value="${targetYear}">
+                <div class="input-wrapper floating-label" style="margin-bottom: 0;">
+                    <input type="number" class="sec-start" placeholder=" " value="${nextStart}" min="1" required>
+                    <label>Start S.No</label>
+                </div>
+                <div class="input-wrapper floating-label" style="margin-bottom: 0;">
+                    <input type="number" class="sec-end" placeholder=" " value="${defaultEnd}" min="1" required>
+                    <label>End S.No</label>
+                </div>
+                <button type="button" class="btn remove-sec-btn" style="color: var(--danger-color); background: rgba(255,0,0,0.1); border: 1px solid rgba(255,0,0,0.2); padding: 0.8rem; border-radius: 8px; cursor: pointer; transition: 0.3s;" onmouseover="this.style.background='rgba(255,0,0,0.2)'" onmouseout="this.style.background='rgba(255,0,0,0.1)'" title="Remove row">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+            `;
+            container.insertAdjacentHTML('beforeend', newRowHtml);
+            
+            autoDistributeSections(targetYear);
+        }
+
+
+        // Attach event delegation for dynamic row buttons & autofill
+        configContainer.addEventListener('click', function(e) {
+            if (e.target.closest('.add-year-sec-btn')) {
+                const btn = e.target.closest('.add-year-sec-btn');
+                addSectionRow(btn.closest('.year-section-group').querySelector('.year-rows-container'), btn.dataset.year);
+            } else if (e.target.closest('.remove-sec-btn')) {
+                const row = e.target.closest('.section-config-row');
+                const group = row.closest('.year-rows-container');
+                const yr = row.dataset.year;
+                if (group.querySelectorAll('.section-config-row').length > 1) {
+                    row.remove();
+                    autoDistributeSections(yr);
+                } else {
+                    alert("You must have at least 1 section per selected Target Year.");
+                }
+            }
+        });
+
+        // Autofill logic for "input" events
+        configContainer.addEventListener('input', function(e) {
+            if (e.target.classList.contains('sec-end') || e.target.classList.contains('sec-name')) {
+                const row = e.target.closest('.section-config-row');
+                const groupContainer = row.closest('.year-rows-container');
+                const allRows = Array.from(groupContainer.querySelectorAll('.section-config-row'));
+                const rowIndex = allRows.indexOf(row);
+                
+                if (e.target.classList.contains('sec-name')) {
+                    // Cascade names to all subsequent rows
+                    const match = e.target.value.match(/^(.*?[^\d])(\d+)$/);
+                    if (match) {
+                        const baseName = match[1];
+                        let currentNum = parseInt(match[2]);
+                        for (let i = rowIndex + 1; i < allRows.length; i++) {
+                            currentNum++;
+                            allRows[i].querySelector('.sec-name').value = baseName + currentNum;
+                        }
+                    }
+                }
+                
+                if (e.target.classList.contains('sec-end')) {
+                    // Only update the immediate next row's start number
+                    if (rowIndex < allRows.length - 1) {
+                        const endVal = parseInt(e.target.value);
+                        if (!isNaN(endVal)) {
+                            allRows[rowIndex + 1].querySelector('.sec-start').value = endVal + 1;
+                        }
+                    }
+                }
+            }
+        });
+
+        // Initialize first load
+        renderSectionInputs();
+
+        // Setup global subjects object
+        window.subjectCodes = {
+            "I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": []
+        };
+
+        // Toggle Subject Source
+        const subjectSourceRadios = document.querySelectorAll('input[name="subject-source"]');
+        const excelSourceDiv = document.querySelector('.subject-source-excel');
+        const manualSourceDiv = document.querySelector('.subject-source-manual');
+        const pillExcel = document.getElementById('pill-excel');
+        const pillManual = document.getElementById('pill-manual');
+        const ACTIVE_PILL_STYLE = 'background:linear-gradient(135deg,var(--primary-color),var(--primary-hover));color:white;box-shadow:0 2px 8px rgba(139,92,246,0.35);';
+        const INACTIVE_PILL_STYLE = 'background:transparent;color:var(--text-muted);box-shadow:none;';
+
+        function updatePillStyles() {
+            const val = document.querySelector('input[name="subject-source"]:checked')?.value;
+            if (pillExcel && pillManual) {
+                pillExcel.style.cssText += val === 'excel' ? ACTIVE_PILL_STYLE : INACTIVE_PILL_STYLE;
+                pillManual.style.cssText += val === 'manual' ? ACTIVE_PILL_STYLE : INACTIVE_PILL_STYLE;
+            }
+        }
+        updatePillStyles();
+
+        subjectSourceRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                updatePillStyles();
+                if (e.target.value === 'excel') {
+                    excelSourceDiv.classList.remove('hidden');
+                    manualSourceDiv.classList.add('hidden');
+                    document.getElementById('subject-file').required = true;
+                } else {
+                    excelSourceDiv.classList.add('hidden');
+                    manualSourceDiv.classList.remove('hidden');
+                    document.getElementById('subject-file').required = false;
+                }
+            });
+        });
+
+        // Parse Subject Excel
+        const subjectFileInput = document.getElementById('subject-file');
+        if (subjectFileInput) {
+            subjectFileInput.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function (evt) {
+                    try {
+                        const data = new Uint8Array(evt.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        window.subjectCodes = { "I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": [] };
+
+                        json.slice(1).forEach(row => {
+                            if (row[0]) {
+                                let txt = String(row[0]).trim();
+                                if (row[1]) txt += " - " + String(row[1]).trim();
+                                window.subjectCodes["I Yr"].push(txt);
+                            }
+                            if (row[2]) {
+                                let txt = String(row[2]).trim();
+                                if (row[3]) txt += " - " + String(row[3]).trim();
+                                window.subjectCodes["II Yr"].push(txt);
+                            }
+                            if (row[4]) {
+                                let txt = String(row[4]).trim();
+                                if (row[5]) txt += " - " + String(row[5]).trim();
+                                window.subjectCodes["III Yr"].push(txt);
+                            }
+                            if (row[6]) {
+                                let txt = String(row[6]).trim();
+                                if (row[7]) txt += " - " + String(row[7]).trim();
+                                window.subjectCodes["IV Yr"].push(txt);
+                            }
+                        });
+                        alert("Subject Codes Loaded Successfully!");
+                    } catch (err) {
+                        console.error("Error parsing subjects excel:", err);
+                        alert("Failed to parse Subject Excel file.");
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Frontend Student Count extraction
+        window.studentCounts = { "I Yr": 0, "II Yr": 0, "III Yr": 0, "IV Yr": 0 };
+        const studentFileInput = document.getElementById('student-file');
+        
+        studentFileInput.addEventListener('click', function() {
+            this.value = null; // Reset value to force change event even if same file is picked
+        });
+        
+        studentFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    // Search for the actual header row (pandas does this automatically)
+                    let headerRowIndex = 0;
+                    for (let i = 0; i < Math.min(json.length, 10); i++) {
+                        if (json[i] && json[i].length > 0) {
+                            const rowStr = json[i].join(' ').toUpperCase();
+                            if (/ENROLL|ENROL|\bNO\.?\b|S\.?\s*NO/i.test(rowStr)) {
+                                headerRowIndex = i;
+                                break;  
+                            }
+                        }
+                    }
+                    
+                    const headerRow = json[headerRowIndex] || [];
+                    const yearColMap = { "I Yr": -1, "II Yr": -1, "III Yr": -1, "IV Yr": -1 };
+                    
+                    // Remove strict word boundaries \b to be resilient to sheetjs string encoding artifacts
+                    const YEAR_PATTERNS = [
+                        { key: "IV Yr", patterns: [/IV/i, /FOURTH/i, /4TH/i] },
+                        { key: "III Yr", patterns: [/III/i, /THIRD/i, /3RD/i] },
+                        { key: "II Yr", patterns: [/II[^A-Z]/i, /SECOND/i, /2ND/i] }, // 'II ', 'II)', but not 'III'
+                        { key: "I Yr", patterns: [/[^A-Z]I[^A-Z]/i, /FIRST/i, /1ST/i] }, // '(I)', ' I ', but not 'IN' or 'II'
+                    ];
+
+                    headerRow.forEach((colRaw, idx) => {
+                        if (!colRaw) return;
+                        const colStr = " " + String(colRaw).toUpperCase() + " ";
+                        
+                        const isEnroll = /ENROLL|ENROL|\bNO\.?\b|\bROLL\b|\bID\b|\bREG\b/i.test(colStr);
+                        if (!isEnroll) return;
+                        
+                        for (let yp of YEAR_PATTERNS) {
+                            if (yp.patterns.some(p => p.test(colStr))) {
+                                if (yearColMap[yp.key] === -1) {
+                                    yearColMap[yp.key] = idx;
+                                }
+                                break;
+                            }
+                        }
+                    });
+
+                    let fallbackCol = -1;
+                    if (Object.values(yearColMap).every(v => v === -1)) {
+                        headerRow.forEach((colRaw, idx) => {
+                            if (!colRaw) return;
+                            if (/ENROLL|ENROL|\\bNO\\.?\\b|\\bROLL\\b|\\bID\\b|\\bREG\\b/i.test(String(colRaw))) {
+                                if (fallbackCol === -1) fallbackCol = idx;
+                            }
+                        });
+                    }
+
+                    // Find S.No column
+                    let snoCol = 0; // Default to first col
+                    headerRow.forEach((colRaw, idx) => {
+                        if (colRaw && /S\\.?\\s*NO/i.test(String(colRaw))) {
+                            snoCol = idx;
+                        }
+                    });
+
+                    function getMaxSNo(colIdx, yrKey) {
+                        let maxSno = 0;
+                        let debugLog = [yrKey + " -> ColIdx: " + colIdx];
+                        let logged = 0;
+                        for (let i = headerRowIndex + 1; i < json.length; i++) {
+                            const row = json[i];
+                            if (row && row[colIdx] !== undefined && row[colIdx] !== null && row[colIdx].toString().trim() !== '') {
+                                const snoVal = parseInt(row[snoCol]);
+                                if (logged < 3) {
+                                    debugLog.push(`  Row ${i}: colVal='${row[colIdx]}' snoVal=${snoVal}`);
+                                    logged++;
+                                }
+                                if (!isNaN(snoVal) && snoVal > maxSno) {
+                                    maxSno = snoVal;
+                                }
+                            }
+                        }
+                        return { max: maxSno, log: debugLog.join('\n') };
+                    }
+
+                    window.studentCounts = { "I Yr": 0, "II Yr": 0, "III Yr": 0, "IV Yr": 0 };
+                    let validHeadersFound = false;
+                    let fullDebug = `headerRowIndex: ${headerRowIndex}, snoCol: ${snoCol}\n`;
+
+                    if (fallbackCol !== -1) {
+                        const res = getMaxSNo(fallbackCol, "Fallback");
+                        const m = res.max;
+                        fullDebug += res.log + "\n";
+                        window.studentCounts["I Yr"] = m;
+                        window.studentCounts["II Yr"] = m;
+                        window.studentCounts["III Yr"] = m;
+                        window.studentCounts["IV Yr"] = m;
+                        validHeadersFound = true;
+                    } else {
+                        Object.keys(yearColMap).forEach(yr => {
+                            const colIdx = yearColMap[yr];
+                            if (colIdx !== -1) {
+                                const res = getMaxSNo(colIdx, yr);
+                                window.studentCounts[yr] = res.max;
+                                fullDebug += res.log + "\n";
+                                validHeadersFound = true;
+                            }
+                        });
+                    }
+                    
+                    if (!validHeadersFound) {
+                        alert("❌ UPLOAD ERROR: No 'Enrollment' or 'Enroll' column found in this file!\\n\\nPlease ensure you are uploading your specific 'Student Data' excel file here, NOT the 'Subjects' file!");
+                        return; // Stop processing further for blank file
+                    }
+                    
+                    console.log("Calculated Max S.No on upload:", window.studentCounts);
+                    console.log(`✅ Automatically detected max S.No limits:\nI Yr: ${window.studentCounts["I Yr"]}\nII Yr: ${window.studentCounts["II Yr"]}\nIII Yr: ${window.studentCounts["III Yr"]}\nIV Yr: ${window.studentCounts["IV Yr"]}\n\nDEBUG LOG:\n${fullDebug}`);
+                    
+                    document.querySelectorAll('.year-section-group').forEach(group => {
+                        const yr = group.dataset.year;
+                        const count = window.studentCounts[yr] || 0;
+                        if (count > 0) {
+                            autoDistributeSections(yr);
+                        }
+                    });
+
+                } catch(e) {
+                    console.error("Error parsing student file on frontend", e);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Update Manual Subjects
+        ['manual-subj-i', 'manual-subj-ii', 'manual-subj-iii', 'manual-subj-iv'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', () => {
+                    const yearMap = { 'manual-subj-i': 'I Yr', 'manual-subj-ii': 'II Yr', 'manual-subj-iii': 'III Yr', 'manual-subj-iv': 'IV Yr' };
+                    const yr = yearMap[id];
+                    window.subjectCodes[yr] = el.value.split(',').map(s => s.trim()).filter(s => s);
+                });
+            }
+        });
+
+        // Dynamic Semester Checkboxes based on Session
+        const sessionSelect = document.getElementById('exam-session');
+        const semesterContainer = document.getElementById('semester-checkboxes-container');
+
+        const oddSemesters = [
+            { id: 'sem-1', label: 'I Sem', value: 'I Sem', mappedYear: 'I Yr' },
+            { id: 'sem-3', label: 'III Sem', value: 'III Sem', mappedYear: 'II Yr' },
+            { id: 'sem-5', label: 'V Sem', value: 'V Sem', mappedYear: 'III Yr' },
+            { id: 'sem-7', label: 'VII Sem', value: 'VII Sem', mappedYear: 'IV Yr' }
+        ];
+
+        const evenSemesters = [
+            { id: 'sem-2', label: 'II Sem', value: 'II Sem', mappedYear: 'I Yr' },
+            { id: 'sem-4', label: 'IV Sem', value: 'IV Sem', mappedYear: 'II Yr' },
+            { id: 'sem-6', label: 'VI Sem', value: 'VI Sem', mappedYear: 'III Yr' },
+            { id: 'sem-8', label: 'VIII Sem', value: 'VIII Sem', mappedYear: 'IV Yr' }
+        ];
+
+        function renderSemesterCheckboxes() {
+            const isOdd = sessionSelect.value === 'Odd';
+            const semesters = isOdd ? oddSemesters : evenSemesters;
+            
+            semesterContainer.innerHTML = '';
+            semesters.forEach(sem => {
+                const checkedStr = '';
+                semesterContainer.innerHTML += `
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-size: 0.9rem;">
+                        <input type="checkbox" name="target_semesters" value="${sem.value}" data-mapped-year="${sem.mappedYear}" ${checkedStr} style="accent-color: var(--primary-color); transform: scale(1.1);"> ${sem.label}
+                    </label>
+                `;
+            });
+        }
+
+        if (sessionSelect) {
+            sessionSelect.addEventListener('change', () => {
+                renderSemesterCheckboxes();
+                renderSectionInputs();
+            });
+            renderSemesterCheckboxes(); // Init
+        }
+
+        document.getElementById('semester-checkboxes-container').addEventListener('change', renderSectionInputs);
+
+        // Load Subjects into ALLOTMENT UI
+        document.getElementById('load-subjects-btn').addEventListener('click', () => {
+            const selectedSems = Array.from(document.querySelectorAll('input[name="target_semesters"]:checked'));
+            const container = document.getElementById('subject-dates-container');
+            
+            if (selectedSems.length === 0) {
+                alert("Please select at least one Semester to import subjects for.");
+                return;
+            }
+
+            let html = '';
+            let foundSubjects = 0;
+
+            selectedSems.forEach(checkbox => {
+                const semName = checkbox.value;
+                const year = checkbox.dataset.mappedYear;
+                const subjects = window.subjectCodes[year] || [];
+                
+                if (subjects.length > 0) {
+                    html += `<details open style="margin-bottom: 1rem; background: rgba(0,0,0,0.1); border-radius: 8px; border: 1px solid var(--border-color);">
+                                <summary onclick="const i=this.querySelector('i'); i.style.transform=this.parentElement.hasAttribute('open') ? 'rotate(0deg)' : 'rotate(180deg)';" style="padding: 1rem; cursor: pointer; color: var(--primary-color); font-weight: 600; outline: none; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                                    <span>${semName} Subjects <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400; margin-left: 10px;">(${subjects.length} subjects)</span></span>
+                                    <i class="fa-solid fa-chevron-down" style="font-size: 0.9rem; transition: transform 0.3s; transform: rotate(180deg);"></i>
+                                </summary>
+                                <div style="padding: 0 1rem 1rem 1rem; display: flex; flex-direction: column; gap: 0.5rem;" class="sem-subjects-list">`;
+                                
+                    subjects.forEach((subj, idx) => {
+                        foundSubjects++;
+                        html += `
+                        <div class="subject-allotment-row" style="display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.2); padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <label style="display: flex; align-items: center; gap: 10px; width: 40px; justify-content: center;">
+                                <input type="checkbox" class="subj-include-cb" checked style="accent-color: var(--primary-color); transform: scale(1.2);">
+                            </label>
+                            <div style="flex: 1; font-weight: 500; font-size: 0.95rem;">${subj}</div>
+                            <div class="input-wrapper floating-label" style="width: 250px; margin-bottom: 0;">
+                                <input type="date" class="subj-date-input" required>
+                                <label style="top: -10px; font-size: 0.75rem;">Date of Exam</label>
+                            </div>
+                            <input type="hidden" class="subj-name-hidden" value="${subj}">
+                            <input type="hidden" class="subj-year-hidden" value="${year}">
+                            <input type="hidden" class="subj-sem-hidden" value="${semName}">
+                        </div>`;
+                    });
+                    
+                    html += `   </div>
+                             </details>`;
+                }
+            });
+
+            if (foundSubjects === 0) {
+                const semNames = selectedSems.map(cb => cb.value).join(', ');
+                container.innerHTML = `<div style="text-align: center; color: var(--warning-color); padding: 1rem;">No subjects found for mapping corresponding to ${semNames}. Please load the Subject Excel or check your selections.</div>`;
+            } else {
+                container.innerHTML = html;
+            }
+        });
+
+        document.getElementById('edit-config-btn').addEventListener('click', () => {
+            document.getElementById('config-section').classList.remove('hidden');
+            document.getElementById('division-section').classList.remove('hidden');
+            document.getElementById('subject-allotment-section').classList.remove('hidden');
+            document.getElementById('results-area').classList.add('hidden');
+        });
+
+        // Handle Custom Branch
+        const branchSelect = document.getElementById('branch-name');
+        const customBranchWrapper = document.getElementById('custom-branch-wrapper');
+        const customBranchInput = document.getElementById('custom-branch-name');
+
+        if (branchSelect) {
+            branchSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'Custom') {
+                    customBranchWrapper.classList.remove('hidden');
+                    customBranchInput.required = true;
+                } else {
+                    customBranchWrapper.classList.add('hidden');
+                    customBranchInput.required = false;
+                }
+            });
+        }
+
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            const studentFile = document.getElementById('student-file').files[0];
+            if (!studentFile) {
+                alert("Please select a student Excel file.");
+                return;
+            }
+            
+            // Save configuration history
+            saveConfigurationToHistory({
+                name: document.getElementById('branch-name').value === 'Custom' ? document.getElementById('custom-branch-name').value : document.getElementById('branch-name').value,
+                institute: document.getElementById('institute-name').value,
+                branch: document.getElementById('branch-name').value,
+                customBranch: document.getElementById('custom-branch-name').value,
+                session: document.getElementById('exam-session').value,
+                year: document.getElementById('exam-year').value,
+                maxMarks: document.getElementById('max-marks').value,
+                minMarks: document.getElementById('min-marks').value,
+                subjectCodes: window.subjectCodes
+            });
+            
+            // Gather subjects to generate sheets for
+            const subjectRows = document.querySelectorAll('.subject-allotment-row');
+            const allottedSubjects = [];
+            subjectRows.forEach(row => {
+                const isIncluded = row.querySelector('.subj-include-cb').checked;
+                if (isIncluded) {
+                    let d = row.querySelector('.subj-date-input').value;
+                    if (d.includes('-')) {
+                        const parts = d.split('-');
+                        d = `${parts[2]}/${parts[1]}/${parts[0]}`; // Convert YYYY-MM-DD to DD/MM/YYYY
+                    }
+                    allottedSubjects.push({
+                        name: row.querySelector('.subj-name-hidden').value,
+                        year: row.querySelector('.subj-year-hidden').value,
+                        semester: row.querySelector('.subj-sem-hidden').value,
+                        date: d
+                    });
+                }
+            });
+
+            if (allottedSubjects.length === 0) {
+                alert("Please load subjects and ensure at least one subject is included with an exam date.");
+                return;
+            }
+            
+            // Gather target years from checkboxes by looking at what was ultimately mapped by the selected checkboxes
+            const selectedSemCheckboxes = Array.from(document.querySelectorAll('input[name="target_semesters"]:checked'));
+            const targetYears = [...new Set(selectedSemCheckboxes.map(cb => cb.dataset.mappedYear))];
+
+            // Compute Exam Month/Year from Session and Year
+            const sessionVal = document.getElementById('exam-session').value;
+            const yearVal = document.getElementById('exam-year').value;
+            const computedExamMonthYear = (sessionVal === 'Odd' ? 'Jul-Dec ' : 'Jan-Jun ') + yearVal;
+
+            let finalBranchName = branchSelect.value;
+            if (finalBranchName === 'Custom') {
+                finalBranchName = customBranchInput.value;
+            }
+
+
+            // Gather base config
+            const baseConfig = {
+                institute_name: document.getElementById('institute-name').value,
+                branch_name: finalBranchName,
+                exam_month_year: computedExamMonthYear,
+                max_marks: document.getElementById('max-marks').value,
+                min_marks: document.getElementById('min-marks').value,
+                target_years: targetYears // Required by backend views.py
+            };
+            
+            // Gather section configs
+            const sectionRows = document.querySelectorAll('.section-config-row');
+            const sectionConfigs = [];
+            sectionRows.forEach(row => {
+                sectionConfigs.push({
+                    year: row.dataset.year,
+                    name: row.querySelector('.sec-name').value,
+                    start: row.querySelector('.sec-start').value,
+                    end: row.querySelector('.sec-end').value
+                });
+            });
+
+            const formData = new FormData();
+            formData.append('student_file', studentFile);
+            formData.append('base_config', JSON.stringify(baseConfig));
+            formData.append('section_configs', JSON.stringify(sectionConfigs));
+
+            try {
+                // Change button state
+                const btn = document.getElementById('generate-btn');
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+                
+                const response = await fetch('/practical_exam/generate/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                btn.innerHTML = origHtml;
+
+                if (data.error) {
+                    alert("Error: " + data.error);
+                    return;
+                }
+                
+                window._lastGeneratedData = { baseConfig: data.base_config, sections: data.sections, allottedSubjects: allottedSubjects };
+                renderSheets(data.base_config, data.sections, allottedSubjects);
+                
+                // Show results
+                document.getElementById('config-section').classList.add('hidden');
+                document.getElementById('division-section').classList.add('hidden');
+                document.getElementById('subject-allotment-section').classList.add('hidden');
+                document.getElementById('results-area').classList.remove('hidden');
+
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 50);
+
+            } catch (err) {
+                alert("An error occurred: " + err);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+             const autofillCheckbox = document.getElementById('autofill-header-footer');
+             if(autofillCheckbox) {
+                 autofillCheckbox.addEventListener('change', () => {
+                     if (window._lastGeneratedData) {
+                         const activeFilterBtn = document.querySelector('#print-filters-container .btn.active');
+                         const activeFilterStr = activeFilterBtn ? activeFilterBtn.textContent : 'Master';
+                        
+                         renderSheets(window._lastGeneratedData.baseConfig, window._lastGeneratedData.sections, window._lastGeneratedData.allottedSubjects);
+                        
+                         const filterBtns = document.querySelectorAll('#print-filters-container .btn-outline-primary');
+                         for (let btn of filterBtns) {
+                             if (btn.textContent === activeFilterStr) {
+                                 btn.click();
+                                 break;
+                             }
+                         }
+                     }
+                 });
+             }
+        });
+
+        function chunkArray(myArray, chunk_size){
+            var results = [];
+            const copy = [...myArray];
+            while (copy.length) {
+                results.push(copy.splice(0, chunk_size));
+            }
+            return results;
+        }
+
+        function buildSheetHeader(config) {
+            const useAutofill = document.getElementById('autofill-header-footer')?.checked ?? true;
+            const sem = useAutofill ? config.semester : "<span style='letter-spacing: 2px;'>_____________</span>";
+            const monthYr = useAutofill ? config.exam_month_year : "<span style='letter-spacing: 2px;'>_____________</span>";
+            const subj = useAutofill ? config.subject_details : "<span style='letter-spacing: 2px;'>_______________________________</span>";
+            const dt = useAutofill ? config.exam_date : "<span style='letter-spacing: 2px;'>_____________</span>";
+            const maxM = useAutofill ? config.max_marks : "<span style='letter-spacing: 2px;'>________</span>";
+            const minM = useAutofill ? config.min_marks : "<span style='letter-spacing: 2px;'>________</span>";
+            const totAppear = useAutofill ? config.total_students : "<span style='letter-spacing: 2px;'>________</span>";
+
+            return `
+                <div style="font-family: 'Times New Roman', serif; font-size: 16px; margin-bottom: 10px; line-height: 1.3; position: relative;">
+                    <div style="position: absolute; top: -10px; right: 0; font-size: 8pt; color: #999; font-style: italic;">Section: ${config.section_name || ''}</div>
+                    <table class="header-table" style="width: 100%; border-collapse: collapse; border: none; font-size: 15px;">
+                        <tr>
+                            <td colspan="3" style="padding: 2px; border: none !important;">Centre: <span style="font-weight: bold;">${config.institute_name}</span></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" style="padding: 2px; border: none !important;">Branch: <span style="font-weight: bold;">${config.branch_name}</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px; width: 35%; border: none !important;">Semester:<span style="display:inline-block; width: 40px;"></span><span style="font-weight: bold; font-size: 10pt;">${sem}</span></td>
+                            <td style="padding: 2px; width: 35%; border: none !important;">Practical Exam in:<span style="display:inline-block; width: 20px;"></span><span style="font-weight: bold; font-size: 10pt;">${monthYr}</span></td>
+                            <td style="padding: 2px; width: 30%; border: none !important;">Sub Code & Sub:<span style="display:inline-block; width: 10px;"></span><span style="font-weight: bold; font-size: 10pt;">${subj}</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px; border: none !important; white-space: nowrap;">Date of Practical Examination:<span style="display:inline-block; width: 10px;"></span><span style="font-weight: bold; font-size: 10pt;">${dt}</span></td>
+                            <td style="padding: 2px; border: none !important; white-space: nowrap;">Maximum Marks:<span style="display:inline-block; width: 20px;"></span><span style="font-weight: bold; font-size: 10pt;">${maxM}</span></td>
+                            <td style="padding: 2px; border: none !important; white-space: nowrap;">Minimum Marks:<span style="display:inline-block; width: 20px;"></span><span style="font-weight: bold; font-size: 10pt;">${minM}</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px; border: none !important;">No. due to appear:<span style="display:inline-block; width: 10px;"></span><span style="font-weight: bold; font-size: 10pt;">${totAppear}</span></td>
+                            <td colspan="2" style="padding: 2px; border: none !important;">No actually appeared: <span style="border-bottom: 1px dotted #000; width: 40px; display: inline-block;"></span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px; border: none !important;">No. of students passed: <span style="border-bottom: 1px dotted #000; width: 40px; display: inline-block;"></span></td>
+                            <td colspan="2" style="padding: 2px; border: none !important;">Percentage of pass: <span style="border-bottom: 1px dotted #000; width: 40px; display: inline-block;"></span></td>
+                        </tr>
+                    </table>
+                    <div style="margin-top: 10px; padding: 2px; font-size: 10pt; font-style: italic; line-height: 1.2;">
+                        Certified that the maximum and minimum pass marks as shown in this sheet are as per scheme of examination of the University. I shall be responsible for any error or omission in it.
+                    </div>
+                </div>
+            `;
+        }
+
+        function buildSheetFooter(examDate) {
+            const useAutofill = document.getElementById('autofill-header-footer')?.checked ?? true;
+            const dt = useAutofill ? examDate : "<span style='letter-spacing: 2px;'>_____________</span>";
+            return `
+                <div style="position: absolute; bottom: 15mm; left: 20mm; right: 20mm; display: flex; justify-content: space-between; font-family: 'Times New Roman', serif; font-size: 15px;">
+                    <div style="width: 45%;">
+                        <div style="margin-bottom: 40px;">Date:<span style="display:inline-block; width: 10px;"></span><span style="font-weight: bold;">${dt}</span></div>
+                        <div style="margin-bottom: 5px;">Signature of Internal Examiner</div>
+                        <div style="margin-bottom: 5px;">Full Name.........................</div>
+                        <div>Designation.......................</div>
+                    </div>
+                    <div style="width: 45%;">
+                        <div style="margin-bottom: 40px;">Date:<span style="display:inline-block; width: 10px;"></span><span style="font-weight: bold;">${dt}</span></div>
+                        <div style="margin-bottom: 5px;">Signature of External Examiner</div>
+                        <div style="margin-bottom: 5px;">Full Name.........................</div>
+                        <div style="margin-bottom: 5px;">Designation.......................</div>
+                        <div>Affiliation.......................</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSheets(baseConfig, sections, allottedSubjects) {
+            const container = document.getElementById('sheets-container');
+            const filtersContainer = document.getElementById('print-filters-container');
+            container.innerHTML = '';
+            
+            // Re-bind print filters container logic just in case
+            if(!filtersContainer) return;
+            filtersContainer.innerHTML = '';
+            
+            let globalHTML = '';
+            
+            // Track combinations for filters
+            const filterCombinations = new Set();
+            
+            allottedSubjects.forEach(subjectInfo => {
+                const specificConfig = {
+                    ...baseConfig,
+                    subject_details: subjectInfo.name,
+                    exam_date: subjectInfo.date,
+                    semester: subjectInfo.semester
+                };
+
+                sections.forEach(sec => {
+                    // Filter matching section year
+                    if (sec.year !== subjectInfo.year) return; 
+                    
+                    const targetStudents = sec.students;
+                    if (targetStudents.length === 0) return;
+                    
+                    // Specific to this section
+                    const sectionSpecificConfig = {
+                        ...specificConfig,
+                        total_students: targetStudents.length,
+                        section_name: sec.name
+                    };
+                    
+                    const semesterClean = subjectInfo.semester.replace(/\s+/g, '-');
+                    const sectionClean = sec.name.replace(/\s+/g, '-');
+                    
+                    filterCombinations.add(JSON.stringify({ sem: subjectInfo.semester, sec: sec.name, semClean: semesterClean, secClean: sectionClean }));
+                    
+                    // 20 students per page
+                    const pages = chunkArray(targetStudents, 20);
+                    
+                    // --- 1. ATTENDANCE SHEETS FOR THIS SECTION ---
+                    pages.forEach((pageStudents, pageIdx) => {
+                        globalHTML += `
+                        <div class="print-page dt-${semesterClean} dt-${sectionClean} dt-ATTENDANCE" style="page-break-after: always; padding: 20mm; font-family: 'Times New Roman', serif; width: 210mm; min-height: 297mm; margin: 0 auto; box-sizing: border-box; background: white; margin-bottom: 1rem; border: 1px solid #ddd; position: relative; padding-bottom: 60mm;">
+                            ${buildSheetHeader(sectionSpecificConfig)}
+                            
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 12px; text-align: center; font-size: 15px;" border="1">
+                                <thead>
+                                    <tr style="font-weight: bold;">
+                                        <th style="padding: 4px; width: 5%;">S.<br>No.</th>
+                                        <th style="padding: 4px; width: 22%;">Enrollment No.</th>
+                                        <th style="padding: 4px; width: 33%;">Name of Candidate</th>
+                                        <th style="padding: 4px; width: 18%;">Copy No.</th>
+                                        <th style="padding: 4px; width: 22%;">Signature of Student</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${pageStudents.map(st => `
+                                    <tr>
+                                        <td style="padding: 4px; font-size: 13px;">${st.sno}</td>
+                                        <td style="padding: 4px; font-size: 13px;">${st.enrollment}</td>
+                                        <td style="padding: 4px; text-align: left; padding-left: 6px; text-transform: uppercase; font-size: 13px;">${st.name}</td>
+                                        <td style="padding: 4px;"></td>
+                                        <td style="padding: 4px;"></td>
+                                    </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            
+                            ${buildSheetFooter(specificConfig.exam_date)}
+                            
+                            <div style="position: absolute; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: bold;">Page ${pageIdx + 1}/${pages.length}</div>
+                        </div>`;
+                    });
+
+                    // --- 2. MARKS SHEETS (FOIL) FOR THIS SECTION ---
+                    const marksPages = chunkArray([...targetStudents], 20);
+                    marksPages.forEach((pageStudents, pageIdx) => {
+                        globalHTML += `
+                        <div class="print-page dt-${semesterClean} dt-${sectionClean} dt-MARKS" style="page-break-after: always; padding: 20mm; font-family: 'Times New Roman', serif; width: 210mm; min-height: 297mm; margin: 0 auto; box-sizing: border-box; background: white; margin-bottom: 1rem; border: 1px solid #ddd; position: relative; padding-bottom: 60mm;">
+                            ${buildSheetHeader(sectionSpecificConfig)}
+                            
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 12px; text-align: center; font-size: 15px;" border="1">
+                                <thead>
+                                    <tr style="font-weight: bold;">
+                                        <th rowspan="2" style="padding: 4px; width: 4%;">S.<br>No.</th>
+                                        <th rowspan="2" style="padding: 4px; width: 17%;">Enrollment No.</th>
+                                        <th rowspan="2" style="padding: 4px; width: 23%;">Name of Candidate</th>
+                                        <th rowspan="2" style="padding: 2px; width: 8%;">Present/<br>Absent</th>
+                                        <th colspan="2" style="padding: 4px; width: 32%;">Marks Alloted</th>
+                                        <th rowspan="2" style="padding: 4px; width: 16%;">Roll No.</th>
+                                    </tr>
+                                    <tr style="font-weight: bold;">
+                                        <th style="padding: 4px; width: 10%;">In Figures</th>
+                                        <th style="padding: 4px; width: 22%;">In Words</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${pageStudents.map(st => `
+                                    <tr>
+                                        <td style="padding: 4px; font-size: 13px;">${st.sno}</td>
+                                        <td style="padding: 4px; font-size: 13px;">${st.enrollment}</td>
+                                        <td style="padding: 4px; text-align: left; padding-left: 6px; text-transform: uppercase; font-size: 13px;">${st.name}</td>
+                                        <td style="padding: 4px;"></td>
+                                        <td style="padding: 4px;"></td>
+                                        <td style="padding: 4px;"></td>
+                                        <td style="padding: 4px; font-size: 13px;">${st.enrollment}</td>
+                                    </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                            
+                            ${buildSheetFooter(specificConfig.exam_date)}
+                            
+                            <div style="position: absolute; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: bold;">Page ${pageIdx + 1}/${marksPages.length}</div>
+                        </div>`;
+                    });
+                });
+            });
+            if (globalHTML === '') {
+                container.innerHTML = `<div style="background: rgba(255,0,0,0.1); border: 2px dashed red; padding: 2rem; color: #ffcccc;">
+                    <h3><i class="fa-solid fa-triangle-exclamation"></i> Blank Sheet Diagnostic Info</h3>
+                    <p>It seems no HTML was generated. Please show this entire block to the assistant:</p>
+                    <pre style="background: black; padding: 1rem; border-radius: 8px; overflow: auto; text-align: left;"><code>
+// allottedSubjects:
+${JSON.stringify(allottedSubjects, null, 2)}
+
+// sections:
+${JSON.stringify(sections.map(s => ({name: s.name, year: s.year, total: s.total, studentsLength: s.students.length})), null, 2)}
+                    </code></pre>
+                </div>`;
+            } else {
+                container.innerHTML = globalHTML;
+            }
+            
+            // Build Filter Buttons
+            let filtersHTML = `<button class="btn print-filter-btn active" data-target="ALL" style="border: 1px solid var(--primary-color); background: var(--primary-color); color: white; border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer;">Master (All Sheets)</button>`;
+            filtersHTML += `<button class="btn print-filter-btn" data-target="ATTENDANCE" style="border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main); border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer;">All Attendance</button>`;
+            filtersHTML += `<button class="btn print-filter-btn" data-target="MARKS" style="border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main); border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer;">All Marks Foil</button>`;
+            
+            Array.from(filterCombinations).map(JSON.parse).forEach(combo => {
+                filtersHTML += `<button class="btn print-filter-btn" data-target="${combo.semClean} ${combo.secClean} ATTENDANCE" style="border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main); border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer;">${combo.sem} ${combo.sec} (Attendance)</button>`;
+                filtersHTML += `<button class="btn print-filter-btn" data-target="${combo.semClean} ${combo.secClean} MARKS" style="border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-main); border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer;">${combo.sem} ${combo.sec} (Marks Foil)</button>`;
+            });
+            
+            filtersContainer.innerHTML = filtersHTML;
+            
+            // Add Listeners
+            document.querySelectorAll('.print-filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Update Active Styles
+                    document.querySelectorAll('.print-filter-btn').forEach(b => {
+                        b.style.background = 'rgba(0,0,0,0.2)';
+                        b.style.borderColor = 'var(--border-color)';
+                        b.style.color = 'var(--text-main)';
+                    });
+                    this.style.background = 'var(--primary-color)';
+                    this.style.borderColor = 'var(--primary-color)';
+                    this.style.color = 'white';
+                    
+                    const targets = this.dataset.target.split(' ');
+                    const pages = document.querySelectorAll('.print-page');
+                    
+                    pages.forEach(pg => {
+                        if(targets[0] === 'ALL') {
+                            pg.style.display = 'block';
+                        } else {
+                            // Check if page has all required targets
+                            const hasAll = targets.every(t => pg.classList.contains('dt-' + t));
+                            pg.style.display = hasAll ? 'block' : 'none';
+                        }
+                    });
+                });
+            });
+        }
+
+        // --- Modal & History Logic ---
+        const helpModal = document.createElement('div');
+        helpModal.id = 'help-modal';
+        helpModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); overflow-y:auto; padding:2rem 1rem;';
+        helpModal.innerHTML = `
+            <div style="max-width:700px; margin:auto; background:var(--bg-card); border:1px solid var(--border-color); border-radius:18px; padding:2rem; position:relative; box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+                <button id="help-close-btn" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <div style="text-align:center; margin-bottom:1.8rem;">
+                    <div style="font-size:2.8rem;">📋</div>
+                    <h2 style="margin:0.4rem 0 0.2rem; color:var(--primary-color); font-size:1.5rem;">How to Use — Practical Examination</h2>
+                    <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">Generate precise Attendance and Marks evaluation sheets instantly.</p>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.9rem;">
+                    <div style="display:flex; gap:1rem; align-items:flex-start; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.25); border-radius:12px; padding:1rem;">
+                        <div style="font-size:1.8rem; min-width:2.4rem; text-align:center;">⚙️</div>
+                        <div>
+                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 1 — Context Setup</strong>
+                            <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
+                                Enter the <b>Centre Name</b> to appear on headers. Select <b>Branch, Session, and Year</b>.<br>
+                                Choose to provide Subject definitions manually or upload an Excel.<br>
+                                Fill in standard <b>Max/Min Marks</b>. Select the semesters your uploaded <b>Student Excel</b> covers.
+                            </p>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:1rem; align-items:flex-start; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.25); border-radius:12px; padding:1rem;">
+                        <div style="font-size:1.8rem; min-width:2.4rem; text-align:center;">📅</div>
+                        <div>
+                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 2 — Subject Date Allotment</strong>
+                            <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
+                                Click <b>Load Subjects</b> to render the subjects mapped to the chosen semesters.<br>
+                                Assign exam <b>Dates</b> to each subject you wish to generate sheets for. You can uncheck subjects to ignore them.
+                            </p>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:1rem; align-items:flex-start; background:rgba(139,92,246,0.08); border:1px solid rgba(139,92,246,0.25); border-radius:12px; padding:1rem;">
+                        <div style="font-size:1.8rem; min-width:2.4rem; text-align:center;">🚀</div>
+                        <div>
+                            <strong style="color:var(--text-main); display:block; margin-bottom:0.3rem;">Step 3 — Generate & Print</strong>
+                            <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
+                                Hit <b>Generate Practical Sheets</b>. The system parses the student Excel, links them to the correct section/subject, and creates ready-to-print formats.<br>
+                                Use the floating buttons to quickly jump to top/bottom or filter between Attendance and Marks Evaluation pages.
+                            </p>
+                        </div>
+                    </div>
+                    <button id="help-got-it-btn" class="btn" style="width:100%; margin-top:1rem; padding:1rem; font-size:1.1rem; border-radius:12px;">Got it, let's go! <i class="fa-solid fa-rocket" style="margin-left:8px;"></i></button>
+                </div>
+            </div>`;
+        document.body.appendChild(helpModal);
+
+        const historyModal = document.createElement('div');
+        historyModal.id = 'history-modal';
+        historyModal.style.cssText = 'display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); overflow-y:auto; padding:2rem 1rem;';
+        historyModal.innerHTML = `
+            <div style="max-width:600px; margin:auto; background:var(--bg-card); border:1px solid var(--border-color); border-radius:18px; padding:2rem; position:relative; box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+                <button id="history-close-btn" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                <div style="text-align:center; margin-bottom:1.8rem;">
+                    <div style="font-size:2.8rem;">🕒</div>
+                    <h2 style="margin:0.4rem 0 0.2rem; color:var(--primary-color); font-size:1.5rem;">Recent Configurations</h2>
+                    <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">Restore a previously generated setup (Last 4 saved).</p>
+                </div>
+                <div id="history-list-container" style="display:flex; flex-direction:column; gap:0.9rem;"></div>
+            </div>`;
+        document.body.appendChild(historyModal);
+
+        document.getElementById('help-btn')?.addEventListener('click', () => { helpModal.style.display = 'block'; document.body.style.overflow = 'hidden'; });
+        const closeHelp = () => { helpModal.style.display = 'none'; document.body.style.overflow = ''; };
+        document.getElementById('help-close-btn')?.addEventListener('click', closeHelp);
+        document.getElementById('help-got-it-btn')?.addEventListener('click', closeHelp);
+        helpModal.addEventListener('click', e => { if (e.target === helpModal) closeHelp(); });
+
+        document.getElementById('history-btn')?.addEventListener('click', () => { historyModal.style.display = 'block'; document.body.style.overflow = 'hidden'; renderHistoryList(); });
+        const closeHistory = () => { historyModal.style.display = 'none'; document.body.style.overflow = ''; };
+        document.getElementById('history-close-btn')?.addEventListener('click', closeHistory);
+        historyModal.addEventListener('click', e => { if (e.target === historyModal) closeHistory(); });
+
+        function saveConfigurationToHistory(config) {
+            let presets = [];
+            try { presets = JSON.parse(localStorage.getItem('practicalExamPresets')) || []; } catch(e){}
+            const dateObj = new Date();
+            config.dateStr = dateObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true });
+            presets.unshift(config);
+            if(presets.length > 4) presets = presets.slice(0, 4);
+            localStorage.setItem('practicalExamPresets', JSON.stringify(presets));
+        }
+
+        function renderHistoryList() {
+            const container = document.getElementById('history-list-container');
+            if (!container) return;
+            container.innerHTML = '';
+            let presets = [];
+            try { presets = JSON.parse(localStorage.getItem('practicalExamPresets')) || []; } catch(e){}
+            if (presets.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color: var(--text-muted); padding: 2rem;">No saved configurations found. Generate sheets to save one!</div>';
+                return;
+            }
+            presets.forEach((preset, index) => {
+                const div = document.createElement('div');
+                div.style.background = 'rgba(139,92,246,0.08)';
+                div.style.border = '1px solid rgba(139,92,246,0.25)';
+                div.style.borderRadius = '12px';
+                div.style.padding = '1rem';
+                div.style.display = 'flex';
+                div.style.justifyContent = 'space-between';
+                div.style.alignItems = 'center';
+                div.innerHTML = `
+                    <div>
+                        <h4 style="margin: 0; color: var(--text-main); font-size: 1.1rem;">${preset.name || 'Configuration'}</h4>
+                        <p style="margin: 0.3rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
+                            <i class="fa-regular fa-clock" style="margin-right: 4px;"></i>${preset.dateStr}<br>
+                            Session: ${preset.session} ${preset.year}
+                        </p>
+                    </div>
+                    <button class="btn outline-btn" style="padding: 0.5rem 1rem;" onclick="restorePreset(${index})">
+                        Restore <i class="fa-solid fa-arrow-right-long" style="margin-left: 5px;"></i>
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        window.restorePreset = function(index) {
+            let presets = [];
+            try { presets = JSON.parse(localStorage.getItem('practicalExamPresets')) || []; } catch(e){}
+            const p = presets[index];
+            if (!p) return;
+            document.getElementById('institute-name').value = p.institute || '';
+            document.getElementById('branch-name').value = p.branch || '';
+            if (p.branch === 'Custom') {
+                document.getElementById('custom-branch-wrapper').classList.remove('hidden');
+                document.getElementById('custom-branch-name').value = p.customBranch || '';
+            } else {
+                document.getElementById('custom-branch-wrapper').classList.add('hidden');
+            }
+            document.getElementById('exam-session').value = p.session || 'Even';
+            document.getElementById('exam-year').value = p.year || '26';
+            document.getElementById('max-marks').value = p.maxMarks || '60';
+            document.getElementById('min-marks').value = p.minMarks || '30';
+            window.subjectCodes = p.subjectCodes || { "I Yr":[], "II Yr":[], "III Yr":[], "IV Yr":[] };
+            document.getElementById('exam-session').dispatchEvent(new Event('change'));
+            closeHistory();
+            const hcBtn = document.getElementById('history-btn');
+            if (hcBtn) {
+                const org = hcBtn.innerHTML;
+                hcBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                hcBtn.style.background = 'var(--success-color)';
+                hcBtn.style.color = 'white';
+                setTimeout(() => { hcBtn.innerHTML = org; hcBtn.style.background = ''; hcBtn.style.color = ''; }, 1500);
+            }
+        };
+
+
+        document.getElementById('export-pdf-btn').addEventListener('click', () => {
+            const printContent = document.getElementById('sheets-container').innerHTML;
+            
+            // Create a totally isolated iframe to completely escape style_v2.css and browser dark modes
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+            
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(`
+                <html>
+                <head>
+                    <title>Print Sheets</title>
+                    <style>
+                        @page { size: A4 portrait; margin: 0; }
+                        body { 
+                            margin: 0; 
+                            padding: 0; 
+                            background: white; 
+                            -webkit-print-color-adjust: exact; 
+                            print-color-adjust: exact; 
+                            color: black;
+                        }
+                        .print-page { 
+                            margin: 0 !important; 
+                            border: none !important; 
+                            box-shadow: none !important;
+                            width: 210mm !important;
+                            height: 296mm !important;
+                            max-height: 296mm !important;
+                            padding: 12mm 15mm !important;
+                            box-sizing: border-box !important;
+                            page-break-after: always !important;
+                            page-break-inside: avoid !important;
+                            font-family: 'Times New Roman', serif !important;
+                            position: relative !important;
+                            overflow: hidden !important;
+                        }
+                        /* Hard-enforce native Times New Roman everywhere inside the sandbox */
+                        * {
+                            font-family: 'Times New Roman', serif !important;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${printContent}
+                </body>
+                </html>
+            `);
+            doc.close();
+            
+            // Wait a tiny bit for rendering, then print and remove
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                }, 1000);
+            }, 250);
+        });
+
+        document.getElementById('export-excel-btn').addEventListener('click', async () => {
+            if (!window._lastGeneratedData) {
+                alert("No sheets generated yet.");
+                return;
+            }
+            
+            const btn = document.getElementById('export-excel-btn');
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Exporting...';
+            btn.disabled = true;
+
+            try {
+                const { baseConfig, sections, allottedSubjects } = window._lastGeneratedData;
+                const workbook = new ExcelJS.Workbook();
+                workbook.creator = baseConfig.institute_name;
+
+                for (const subjectInfo of allottedSubjects) {
+                    const specificConfig = {
+                        ...baseConfig,
+                        subject_details: subjectInfo.name,
+                        exam_date: subjectInfo.date,
+                        semester: subjectInfo.semester
+                    };
+
+                    for (const sec of sections) {
+                        if (sec.year !== subjectInfo.year) continue;
+                        if (sec.students.length === 0) continue;
+                        
+                        const sectionSpecificConfig = { ...specificConfig, total_students: sec.students.length, section_name: sec.name };
+                        let baseTabName = (subjectInfo.semester + "_" + sec.name + "_" + subjectInfo.name.split('-')[0].trim()).replace(/[\\/*?:\[\]]/g, '').substring(0, 24);
+                        
+                        function createWs(suffix) {
+                            let cleanName = baseTabName + suffix;
+                            let counter = 1;
+                            while (workbook.getWorksheet(cleanName)) {
+                                cleanName = baseTabName.substring(0, 23) + "_" + counter + suffix;
+                                counter++;
+                            }
+                            const wsNew = workbook.addWorksheet(cleanName, {
+                                pageSetup: {
+                                    paperSize: 9, // A4
+                                    orientation: 'portrait',
+                                    fitToPage: true,
+                                    fitToWidth: 1,
+                                    fitToHeight: 0,
+                                    margins: { left: 0.4, right: 0.4, top: 0.25, bottom: 0.25, header: 0, footer: 0 }
+                                }
+                            });
+                            wsNew.columns = [
+                                { width: 6 }, { width: 16 }, { width: 33 }, { width: 11 }, { width: 12 }, { width: 22 }, { width: 16 }
+                            ];
+                            return wsNew;
+                        }
+
+                        const stdFont = { name: 'Times New Roman', size: 10 };
+                        const boldFont = { name: 'Times New Roman', size: 10, bold: true };
+                        const hdrFont = { name: 'Times New Roman', size: 11, bold: true };
+                        const ftrHdrFont = { name: 'Times New Roman', size: 12 };
+                        const ftrHdrBoldFont = { name: 'Times New Roman', size: 12, bold: true };
+
+                        const thinBorder = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+
+                        const studentPages = chunkArray(sec.students, 20);
+
+                        function buildHeader(ws, rowIdx) {
+                            const useAutofill = document.getElementById('autofill-header-footer')?.checked ?? true;
+                            const sem = useAutofill ? sectionSpecificConfig.semester : "_____________";
+                            const monthYr = useAutofill ? sectionSpecificConfig.exam_month_year : "_____________";
+                            const subj = useAutofill ? sectionSpecificConfig.subject_details : "_______________________________";
+                            const dt = useAutofill ? sectionSpecificConfig.exam_date : "_____________";
+                            const maxM = useAutofill ? sectionSpecificConfig.max_marks : "________";
+                            const minM = useAutofill ? sectionSpecificConfig.min_marks : "________";
+                            const totAppear = useAutofill ? sectionSpecificConfig.total_students : "________";
+
+                            const sectionRow = ws.getRow(rowIdx);
+                            sectionRow.height = 16;
+                            sectionRow.getCell(6).value = "Section: " + sectionSpecificConfig.section_name;
+                            sectionRow.getCell(6).font = { ...ftrHdrFont, italic: true };
+                            sectionRow.getCell(6).alignment = { horizontal: 'right' };
+                            ws.mergeCells(rowIdx, 6, rowIdx, 7);
+                            rowIdx++;
+
+                            let r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = { richText: [{ text: "Centre: ", font: ftrHdrFont }, { text: sectionSpecificConfig.institute_name, font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 1, r.number, 7);
+                            
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = { richText: [{ text: "Branch: ", font: ftrHdrFont }, { text: sectionSpecificConfig.branch_name, font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 1, r.number, 7);
+
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = { richText: [{ text: "Semester: ", font: ftrHdrFont }, { text: String(sem), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 1, r.number, 2);
+                            r.getCell(3).value = { richText: [{ text: "Practical Exam in: ", font: ftrHdrFont }, { text: String(monthYr), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 3, r.number, 4);
+                            r.getCell(5).value = { richText: [{ text: "Sub Code & Sub: ", font: ftrHdrFont }, { text: String(subj), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 5, r.number, 7);
+
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = { richText: [{ text: "Date of Practical Exam: ", font: ftrHdrFont }, { text: String(dt), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 1, r.number, 2);
+                            r.getCell(3).value = { richText: [{ text: "Maximum Marks: ", font: ftrHdrFont }, { text: String(maxM), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 3, r.number, 4);
+                            r.getCell(5).value = { richText: [{ text: "Minimum Marks: ", font: ftrHdrFont }, { text: String(minM), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 5, r.number, 7);
+
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = { richText: [{ text: "No. due to appear: ", font: ftrHdrFont }, { text: String(totAppear), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 1, r.number, 2);
+                            r.getCell(3).value = "No actually appeared: ________________"; 
+                            r.getCell(3).font = ftrHdrFont;
+                            ws.mergeCells(r.number, 3, r.number, 7);
+
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = "No. passed: ________________"; 
+                            r.getCell(1).font = ftrHdrFont;
+                            ws.mergeCells(r.number, 1, r.number, 2);
+                            r.getCell(3).value = "Percentage of pass: ________________"; 
+                            r.getCell(3).font = ftrHdrFont;
+                            ws.mergeCells(r.number, 3, r.number, 7);
+
+                            r = ws.getRow(rowIdx++); r.height = 35;
+                            const certCell = r.getCell(1);
+                            certCell.value = "Certified that the maximum and minimum pass marks as shown in this sheet are as per scheme of examination of the University. I shall be responsible for any error or omission in it.";
+                            certCell.font = { ...stdFont, italic: true };
+                            certCell.alignment = { wrapText: true, vertical: 'top' };
+                            ws.mergeCells(r.number, 1, r.number, 7);
+                            
+                            return rowIdx;
+                        }
+
+                        function buildFooter(ws, rowIdx, pageIdx, totPages) {
+                            const useAutofill = document.getElementById('autofill-header-footer')?.checked ?? true;
+                            const dt = useAutofill ? sectionSpecificConfig.exam_date : "_____________";
+
+                            let sp1 = ws.getRow(rowIdx++); sp1.height = 5; // Push Date down safely
+                            let r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = { richText: [{ text: "Date:               ", font: ftrHdrFont }, { text: String(dt), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 1, r.number, 3);
+                            r.getCell(5).value = { richText: [{ text: "Date:               ", font: ftrHdrFont }, { text: String(dt), font: ftrHdrBoldFont }] };
+                            ws.mergeCells(r.number, 5, r.number, 7);
+
+                            let sp2 = ws.getRow(rowIdx++); sp2.height = 15; // Generous space for real signatures!
+
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = "Signature of Internal Examiner"; r.getCell(1).font = ftrHdrFont; ws.mergeCells(r.number, 1, r.number, 3);
+                            r.getCell(5).value = "Signature of External Examiner"; r.getCell(5).font = ftrHdrFont; ws.mergeCells(r.number, 5, r.number, 7);
+
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = "Full Name    ............................"; r.getCell(1).font = ftrHdrFont; ws.mergeCells(r.number, 1, r.number, 3);
+                            r.getCell(5).value = "Full Name    ............................"; r.getCell(5).font = ftrHdrFont; ws.mergeCells(r.number, 5, r.number, 7);
+
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = "Designation ............................"; r.getCell(1).font = ftrHdrFont; ws.mergeCells(r.number, 1, r.number, 3);
+                            r.getCell(5).value = "Designation ............................"; r.getCell(5).font = ftrHdrFont; ws.mergeCells(r.number, 5, r.number, 7);
+
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(5).value = "Affiliation  ............................"; r.getCell(5).font = ftrHdrFont; ws.mergeCells(r.number, 5, r.number, 7);
+
+                            let sp3 = ws.getRow(rowIdx++); sp3.height = 5;
+                            r = ws.getRow(rowIdx++); r.height = 16;
+                            r.getCell(1).value = "Page " + pageIdx + "/" + totPages;
+                            r.getCell(1).font = { ...ftrHdrFont, bold: true };
+                            r.getCell(1).alignment = { horizontal: 'center' };
+                            ws.mergeCells(r.number, 1, r.number, 7);
+
+                            return rowIdx;
+                        }
+
+                        // --- GENERATE ALL ATTENDANCE PAGES ---
+                        const wsAtt = createWs('_Att');
+                        let excelRowIdxAtt = 1;
+                        for (let pageIdx = 0; pageIdx < studentPages.length; pageIdx++) {
+                            const pageStudents = studentPages[pageIdx];
+                            excelRowIdxAtt = buildHeader(wsAtt, excelRowIdxAtt);
+
+                            const tr = wsAtt.getRow(excelRowIdxAtt++); tr.height = 25;
+                            tr.getCell(1).value = "S.No.";
+                            tr.getCell(2).value = "Enrollment No.";
+                            tr.getCell(3).value = "Name of Candidate";
+                            tr.getCell(4).value = "Copy No."; wsAtt.mergeCells(tr.number, 4, tr.number, 5);
+                            tr.getCell(6).value = "Signature of Student"; wsAtt.mergeCells(tr.number, 6, tr.number, 7);
+
+                            [1,2,3,4,6].forEach(c => {
+                                const cell = tr.getCell(c);
+                                cell.font = boldFont; cell.border = thinBorder; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                            });
+                            tr.getCell(5).border = thinBorder; tr.getCell(7).border = thinBorder;
+
+                            for(const st of pageStudents) {
+                                let sr = wsAtt.getRow(excelRowIdxAtt++); sr.height = 25;
+                                sr.getCell(1).value = st.sno; sr.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+                                sr.getCell(2).value = st.enrollment; sr.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
+                                sr.getCell(3).value = " " + st.name; sr.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+                                wsAtt.mergeCells(sr.number, 4, sr.number, 5); wsAtt.mergeCells(sr.number, 6, sr.number, 7);
+                                [1,2,3,4,5,6,7].forEach(c => { sr.getCell(c).font = stdFont; sr.getCell(c).border = thinBorder; });
+                            }
+
+                            let rowsToFill = 20 - pageStudents.length;
+                            for(let k = 0; k < rowsToFill; k++) {
+                                let sr = wsAtt.getRow(excelRowIdxAtt++); sr.height = 25;
+                                wsAtt.mergeCells(sr.number, 4, sr.number, 5); wsAtt.mergeCells(sr.number, 6, sr.number, 7);
+                                [1,2,3,4,5,6,7].forEach(c => { sr.getCell(c).border = thinBorder; });
+                            }
+
+                            excelRowIdxAtt = buildFooter(wsAtt, excelRowIdxAtt, pageIdx + 1, studentPages.length);
+                            if (pageIdx < studentPages.length - 1) wsAtt.getRow(excelRowIdxAtt - 1).addPageBreak();
+                        }
+
+                        // --- GENERATE ALL MARKS PAGES ---
+                        const wsMrk = createWs('_Mrk');
+                        let excelRowIdxMrk = 1;
+                        for (let pageIdx = 0; pageIdx < studentPages.length; pageIdx++) {
+                            const pageStudents = studentPages[pageIdx];
+                            excelRowIdxMrk = buildHeader(wsMrk, excelRowIdxMrk);
+
+                            let tr1 = wsMrk.getRow(excelRowIdxMrk++); tr1.height = 20;
+                            let tr2 = wsMrk.getRow(excelRowIdxMrk++); tr2.height = 20;
+
+                            tr1.getCell(1).value = "S.No."; wsMrk.mergeCells(tr1.number, 1, tr2.number, 1);
+                            tr1.getCell(2).value = "Enrollment No."; wsMrk.mergeCells(tr1.number, 2, tr2.number, 2);
+                            tr1.getCell(3).value = "Name of Candidate"; wsMrk.mergeCells(tr1.number, 3, tr2.number, 3);
+                            tr1.getCell(4).value = "Present/Absent"; wsMrk.mergeCells(tr1.number, 4, tr2.number, 4);
+                            tr1.getCell(5).value = "Marks Alloted"; wsMrk.mergeCells(tr1.number, 5, tr1.number, 6);
+                            tr1.getCell(7).value = "Roll No."; wsMrk.mergeCells(tr1.number, 7, tr2.number, 7);
+                            tr2.getCell(5).value = "In Figures"; tr2.getCell(6).value = "In Words";
+
+                            [tr1, tr2].forEach(row => {
+                                [1,2,3,4,5,6,7].forEach(c => {
+                                    const cell = row.getCell(c);
+                                    cell.font = boldFont; cell.border = thinBorder; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                                });
+                            });
+
+                            for(const st of pageStudents) {
+                                let sr = wsMrk.getRow(excelRowIdxMrk++); sr.height = 25;
+                                sr.getCell(1).value = st.sno; sr.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+                                sr.getCell(2).value = st.enrollment; sr.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
+                                sr.getCell(3).value = " " + st.name; sr.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+                                sr.getCell(7).value = st.enrollment; sr.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+                                [1,2,3,4,5,6,7].forEach(c => { sr.getCell(c).font = stdFont; sr.getCell(c).border = thinBorder; });
+                            }
+
+                            let marksRowsToFill = 20 - pageStudents.length;
+                            for(let k = 0; k < marksRowsToFill; k++) {
+                                let sr = wsMrk.getRow(excelRowIdxMrk++); sr.height = 25;
+                                [1,2,3,4,5,6,7].forEach(c => { sr.getCell(c).border = thinBorder; });
+                            }
+
+                            excelRowIdxMrk = buildFooter(wsMrk, excelRowIdxMrk, pageIdx + 1, studentPages.length);
+                            if (pageIdx < studentPages.length - 1) wsMrk.getRow(excelRowIdxMrk - 1).addPageBreak();
+                        }
+                    }
+                }
+
+                workbook.eachSheet((sheet) => {
+                    sheet.eachRow((row) => {
+                        row.height = 25;
+                        row.eachCell({ includeEmpty: true }, (cell) => {
+                            const curAlign = cell.alignment || {};
+                            cell.alignment = { ...curAlign, vertical: 'middle' };
+                        });
+                    });
+                });
+
+
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                saveAs(blob, "Practical_Exam_Sheets.xlsx");
+
+            } catch (err) {
+                console.error(err);
+                alert("Export error: " + err);
+            } finally {
+                btn.innerHTML = origHtml;
+                btn.disabled = false;
+            }
+        });
+
+    </script>
+</body>
+</html>

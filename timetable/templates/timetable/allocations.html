@@ -1,0 +1,653 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workload Allocation | Academic Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'seat_manager/style_v2.css' %}">
+    <style>
+        .top-nav {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-primary {
+            padding: 0.6rem 1.2rem;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: 0.3s;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .subject-card {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .subject-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .alloc-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .alloc-stat {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value.ok {
+            color: #10B981;
+        }
+
+        .stat-value.warn {
+            color: #F59E0B;
+        }
+
+        .stat-value.danger {
+            color: #EF4444;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .allocation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .allocation-table th,
+        .allocation-table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .allocation-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .tag-l {
+            color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .tag-t {
+            color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .tag-p {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body data-theme="dark">
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
+    <div class="top-nav fade-in">
+        <button class="nav-btn" onclick="toggleTheme()" id="theme-btn">
+            <i class="fa-solid fa-sun"></i>
+        </button>
+        <a href="{% url 'session_setup' %}" class="nav-btn"><i class="fa-solid fa-arrow-left"></i></a>
+    </div>
+
+    <main class="container" style="max-width: 1600px; padding: 0 2rem;">
+
+            
+            <!-- LEFT PANEL: Faculties List -->
+            <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+                <div style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);">
+                    <h3 style="margin: 0; color: var(--text-main); font-size: 1.1rem;"><i class="fa-solid fa-chalkboard-user"></i> Faculty Roster</h3>
+                    <input type="text" id="facultySearch" placeholder="Search Faculty..." class="input-control" style="width: 100%; margin-top: 1rem; padding: 0.6rem; font-size: 0.9rem;">
+                </div>
+                <div id="facultyList" style="flex: 1; overflow-y: auto; padding: 0.5rem;">
+                    <!-- Faculties injected here via JS -->
+                </div>
+            </div>
+
+            <!-- MIDDLE PANEL: Wizard Form -->
+            <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; height: 100%; display: flex; flex-direction: column;">
+                <div style="padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <h3 style="margin: 0; color: var(--text-main); font-size: 1.2rem;" id="wizardTitle">Select a Faculty to Begin</h3>
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9rem;" id="wizardSubtitle">Current Load: -- / -- hrs</p>
+                </div>
+
+                <div id="wizardContent" style="padding: 2rem; display: none;">
+                    
+                    <form id="assignmentForm" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="faculty_id" id="formFacId">
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Step 1: Select Semester</label>
+                            <select id="semSelect" name="semester" class="input-control" style="width: 100%;" required>
+                                <option value="">-- Choose Semester --</option>
+                                {% for s in active_sems %}
+                                <option value="{{ s }}">Semester {{ s }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem; display: none;" id="step2">
+                            <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Step 2: Select Section</label>
+                            <select id="secSelect" name="section_id" class="input-control" style="width: 100%;" required>
+                                <option value="">-- Choose Section --</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem; display: none;" id="step3">
+                            <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Step 3: Workload Category</label>
+                            <div style="display: flex; gap: 1rem;">
+                                <label style="flex: 1; cursor: pointer; border: 1px solid rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.05); padding: 1rem; border-radius: 8px; text-align: center;">
+                                    <input type="radio" name="category" value="l_hrs" required style="accent-color: #3b82f6;">
+                                    <div style="color: #3b82f6; font-weight: bold; margin-top: 0.5rem;">Lecture (L)</div>
+                                </label>
+                                <label style="flex: 1; cursor: pointer; border: 1px solid rgba(139, 92, 246, 0.3); background: rgba(139, 92, 246, 0.05); padding: 1rem; border-radius: 8px; text-align: center;">
+                                    <input type="radio" name="category" value="t_hrs" required style="accent-color: #8b5cf6;">
+                                    <div style="color: #8b5cf6; font-weight: bold; margin-top: 0.5rem;">Tutorial (T)</div>
+                                </label>
+                                <label style="flex: 1; cursor: pointer; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.05); padding: 1rem; border-radius: 8px; text-align: center;">
+                                    <input type="radio" name="category" value="p_hrs" required style="accent-color: #10B981;">
+                                    <div style="color: #10B981; font-weight: bold; margin-top: 0.5rem;">Practical (P)</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 2rem; display: none;" id="step4">
+                            <label class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Step 4: Select Subject to Assign</label>
+                            <select id="subSelect" name="subject_id" class="input-control" style="width: 100%; border: 2px solid var(--primary-color);" required>
+                                <option value="">-- Choose Subject --</option>
+                            </select>
+                        </div>
+
+                        <div id="step5" style="display: none; text-align: right; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem;">
+                            <button type="submit" class="btn-primary" style="font-size: 1.1rem; padding: 0.8rem 2rem;"><i class="fa-solid fa-check"></i> Assign Workload</button>
+                        </div>
+
+                    </form>
+
+                </div>
+                
+                <!-- Assignment List for selected faculty -->
+                <div id="wizardAssignments" style="padding: 1rem 2rem; border-top: 1px solid rgba(255,255,255,0.05); flex: 1; overflow-y: auto; display: none;">
+                    <h4 style="color: var(--text-main); margin-bottom: 1rem; font-size: 1rem;">Current Assignments</h4>
+                    <div id="assignmentList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+
+                <div id="wizardEmptyState" style="text-align: center; padding: 4rem 2rem; margin: auto;">
+                    <i class="fa-solid fa-hand-pointer" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem; opacity: 0.5;"></i>
+                    <h3 style="color: var(--text-muted); font-weight: 400;">Select a Faculty from the list on the left to start assigning workload.</h3>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: Live Subject Stats -->
+            <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+                <div style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);">
+                    <h3 style="margin: 0; color: var(--text-main); font-size: 1.1rem;"><i class="fa-solid fa-chart-pie"></i> Scheme Status</h3>
+                    <p style="margin: 0.2rem 0 0 0; color: var(--text-muted); font-size: 0.8rem;">Remaining load across subjects</p>
+                </div>
+                <div id="statsList" style="flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Subject stats injected here via JS -->
+                    <div style="text-align: center; color: var(--text-muted); padding: 2rem; font-style: italic;">Select a semester in the wizard to view subjects.</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Data Injection -->
+    <script id="data-faculties" type="application/json">{{ faculties_json|safe }}</script>
+    <script id="data-subjects" type="application/json">{{ subjects_json|safe }}</script>
+    <script id="data-sections" type="application/json">{{ sections_json|safe }}</script>
+    <script id="data-allocations" type="application/json">{{ allocations_json|safe }}</script>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                body.removeAttribute('data-theme');
+                document.querySelector('#theme-btn i').classList.replace('fa-sun', 'fa-moon');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                document.querySelector('#theme-btn i').classList.replace('fa-moon', 'fa-sun');
+            }
+        }
+
+        // --- Reactive SPA Logic ---
+        
+        let faculties = [];
+        let subjects = [];
+        let sections = [];
+        let allocations = [];
+
+        try {
+            faculties = JSON.parse(document.getElementById('data-faculties').textContent);
+            subjects = JSON.parse(document.getElementById('data-subjects').textContent);
+            sections = JSON.parse(document.getElementById('data-sections').textContent);
+            allocations = JSON.parse(document.getElementById('data-allocations').textContent);
+        } catch(e) {
+            console.error("Failed to parse injected JSON data");
+        }
+        
+        // 2. State
+        let state = {
+            selectedFacultyId: null,
+            selectedSemester: null,
+            selectedSectionId: null,
+            selectedCategory: null,
+        };
+
+        // 3. DOM Elements
+        const DOM = {
+            facList: document.getElementById('facultyList'),
+            facSearch: document.getElementById('facultySearch'),
+            wizTitle: document.getElementById('wizardTitle'),
+            wizSub: document.getElementById('wizardSubtitle'),
+            wizContent: document.getElementById('wizardContent'),
+            wizEmpty: document.getElementById('wizardEmptyState'),
+            wizAssignments: document.getElementById('wizardAssignments'),
+            assignmentList: document.getElementById('assignmentList'),
+            formFacId: document.getElementById('formFacId'),
+            semSelect: document.getElementById('semSelect'),
+            step2: document.getElementById('step2'),
+            secSelect: document.getElementById('secSelect'),
+            step3: document.getElementById('step3'),
+            cats: document.querySelectorAll('input[name="category"]'),
+            step4: document.getElementById('step4'),
+            subSelect: document.getElementById('subSelect'),
+            step5: document.getElementById('step5'),
+            statsList: document.getElementById('statsList')
+        };
+
+        // Helper: Convert ID array/val to int safely
+        function toInt(val) { return parseInt(val, 10); }
+
+        // 4. Render Left Panel (Faculties)
+        function renderFaculties(filter = "") {
+            DOM.facList.innerHTML = '';
+            
+            const filtered = faculties.filter(f => f.name.toLowerCase().includes(filter.toLowerCase()));
+            
+            if (filtered.length === 0) {
+                DOM.facList.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-muted);">No faculty found</div>';
+                return;
+            }
+
+            filtered.forEach(f => {
+                const isSelected = state.selectedFacultyId === f.id;
+                const overLoad = f.max_load > 0 && f.current_load >= f.max_load;
+                
+                const div = document.createElement('div');
+                div.style.cssText = `
+                    padding: 0.8rem 1rem;
+                    margin-bottom: 0.5rem;
+                    border-radius: 8px;
+                    border: 1px solid ${isSelected ? 'var(--primary-color)' : 'transparent'};
+                    background: ${isSelected ? 'rgba(139, 92, 246, 0.1)' : 'rgba(255,255,255,0.02)'};
+                    cursor: pointer;
+                    transition: 0.2s;
+                `;
+                div.onclick = () => selectFaculty(f.id);
+                div.onmouseover = () => { if(!isSelected) div.style.background = 'rgba(255,255,255,0.05)' };
+                div.onmouseout = () => { if(!isSelected) div.style.background = 'rgba(255,255,255,0.02)' };
+
+                let limitStr = f.max_load > 0 ? `${f.max_load}` : '∞';
+
+                div.innerHTML = `
+                    <div style="font-weight: 600; color: ${isSelected ? 'var(--primary-color)' : 'var(--text-main)'}; display: flex; justify-content: space-between;">
+                        <span>${f.name}</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
+                        Load: <span style="font-weight: bold; color: ${overLoad ? '#ef4444' : 'var(--text-main)'}">${f.current_load}</span> / ${limitStr} hrs
+                    </div>
+                `;
+                DOM.facList.appendChild(div);
+            });
+        }
+
+        // 5. User Actions
+        function selectFaculty(id) {
+            state.selectedFacultyId = id;
+            const f = faculties.find(x => x.id === id);
+            
+            // Re-render list for styling
+            renderFaculties(DOM.facSearch.value);
+
+            // Update Wizard Header
+            let limitStr = f.max_load > 0 ? `${f.max_load}` : '∞';
+            const overLoad = f.max_load > 0 && f.current_load >= f.max_load;
+
+            DOM.wizTitle.innerHTML = `<i class="fa-solid fa-user-tie"></i> Assigning for ${f.name}`;
+            DOM.wizSub.innerHTML = `${f.designation} • Load: <strong style="color: ${overLoad ? '#ef4444' : '#10b981'}">${f.current_load}</strong> / ${limitStr} hrs`;
+            
+            // Show Form, Hide Empty
+            DOM.wizEmpty.style.display = 'none';
+            DOM.wizContent.style.display = 'block';
+            DOM.wizAssignments.style.display = 'block';
+            DOM.formFacId.value = f.id;
+
+            // Trigger reset of lower steps
+            DOM.semSelect.value = state.selectedSemester || "";
+            handleSemesterChange();
+            
+            // Render their assignment list
+            renderAssignments();
+        }
+
+        function handleSemesterChange() {
+            state.selectedSemester = parseInt(DOM.semSelect.value) || null;
+            
+            if (state.selectedSemester) {
+                // Populate Sections
+                const sems_sections = sections.filter(s => s.semester === state.selectedSemester);
+                DOM.secSelect.innerHTML = '<option value="">-- Choose Section --</option>';
+                sems_sections.forEach(s => {
+                    DOM.secSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+                DOM.step2.style.display = 'block';
+                
+                // Show Stats on right
+                renderStats();
+            } else {
+                DOM.step2.style.display = 'none';
+                DOM.statsList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 2rem; font-style: italic;">Select a semester in the wizard to view subjects.</div>';
+            }
+            
+            // Hide lower steps
+            DOM.step3.style.display = 'none';
+            DOM.step4.style.display = 'none';
+            DOM.step5.style.display = 'none';
+            DOM.secSelect.value = "";
+            state.selectedSectionId = null;
+            clearCategories();
+        }
+
+        function handleSectionChange() {
+            state.selectedSectionId = parseInt(DOM.secSelect.value) || null;
+            if (state.selectedSectionId) {
+                DOM.step3.style.display = 'block';
+            } else {
+                DOM.step3.style.display = 'none';
+            }
+            DOM.step4.style.display = 'none';
+            DOM.step5.style.display = 'none';
+            clearCategories();
+        }
+
+        function clearCategories() {
+            DOM.cats.forEach(c => c.checked = false);
+            state.selectedCategory = null;
+        }
+
+        function handleCategoryChange(e) {
+            state.selectedCategory = e.target.value; // l_hrs, t_hrs, p_hrs
+            
+            // Populate Subjects that have hours in this category for this semester, AND still have remaining quota
+            const validSubjects = subjects.filter(s => {
+                if (s.semester !== state.selectedSemester) return false;
+                
+                // Check if scheme has hours for this
+                if (state.selectedCategory === 'l_hrs' && s.l_hrs <= 0) return false;
+                if (state.selectedCategory === 't_hrs' && s.t_hrs <= 0) return false;
+                if (state.selectedCategory === 'p_hrs' && s.p_hrs <= 0) return false;
+
+                // Check remaining quota
+                if (state.selectedCategory === 'l_hrs' && s.rem_l <= 0) return false;
+                if (state.selectedCategory === 't_hrs' && s.rem_t <= 0) return false;
+                if (state.selectedCategory === 'p_hrs' && s.rem_p <= 0) return false;
+
+                // Also check if this specific faculty is fully loaded? The backend handles overloaded faculty saves 
+                // but we can prevent them visually if we want. For now, we allow them to see subjects.
+                
+                return true;
+            });
+
+            DOM.subSelect.innerHTML = '<option value="">-- Choose Subject --</option>';
+            const fac = faculties.find(x => x.id === state.selectedFacultyId);
+
+            validSubjects.forEach(s => {
+                const isPreferred = fac.preferred_subjects.includes(s.id);
+                const tag = isPreferred ? ' ⭐ Preferred' : '';
+                
+                let rem = 0;
+                let hrsPerSec = 0;
+                if (state.selectedCategory === 'l_hrs') { rem = s.rem_l; hrsPerSec = s.l_hrs; }
+                if (state.selectedCategory === 't_hrs') { rem = s.rem_t; hrsPerSec = s.t_hrs; }
+                if (state.selectedCategory === 'p_hrs') { rem = s.rem_p; hrsPerSec = s.p_hrs; }
+
+                DOM.subSelect.innerHTML += `<option value="${s.id}">${s.name} (${s.code}) - Rem: ${rem}h (+${hrsPerSec}h to Faculty)${tag}</option>`;
+            });
+
+            if (validSubjects.length === 0) {
+                DOM.subSelect.innerHTML = '<option value="">No subjects with remaining quota in this category</option>';
+            }
+
+            DOM.step4.style.display = 'block';
+            DOM.step5.style.display = 'none';
+            DOM.subSelect.value = "";
+        }
+
+        function handleSubjectChange() {
+            if (DOM.subSelect.value) {
+                DOM.step5.style.display = 'block';
+            } else {
+                DOM.step5.style.display = 'none';
+            }
+        }
+
+        // Render specific assignments for the selected faculty
+        function renderAssignments() {
+            DOM.assignmentList.innerHTML = '';
+            const myAllocs = allocations.filter(a => a.faculty_id === state.selectedFacultyId);
+            
+            if (myAllocs.length === 0) {
+                DOM.assignmentList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">No assignments yet.</div>';
+                return;
+            }
+
+            myAllocs.forEach(a => {
+                const sub = subjects.find(s => s.id === a.subject_id);
+                const sec = sections.find(s => s.id === a.section_id);
+                
+                if(!sub || !sec) return;
+
+                const div = document.createElement('div');
+                div.style.cssText = `
+                    background: rgba(255,255,255,0.03);
+                    border: 1px solid rgba(255,255,255,0.05);
+                    border-radius: 6px;
+                    padding: 0.8rem;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                `;
+                
+                let tags = '';
+                if(a.l_hrs > 0) tags += `<span class="tag-l" style="font-size: 0.7rem; margin-right: 0.2rem;">${a.l_hrs}L</span>`;
+                if(a.t_hrs > 0) tags += `<span class="tag-t" style="font-size: 0.7rem; margin-right: 0.2rem;">${a.t_hrs}T</span>`;
+                if(a.p_hrs > 0) tags += `<span class="tag-p" style="font-size: 0.7rem; margin-right: 0.2rem;">${a.p_hrs}P</span>`;
+
+                div.innerHTML = `
+                    <div>
+                        <div style="font-size: 0.9rem; font-weight: 500; color: var(--text-main);">${sub.name} <span style="color: var(--text-muted); font-weight: normal;">(${sub.code})</span></div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">Section: ${sec.name} | ${tags}</div>
+                    </div>
+                    <form method="POST" style="margin: 0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_allocation" value="${a.id}">
+                        <button type="submit" class="btn-secondary" style="padding: 0.3rem 0.6rem; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);" title="Remove Assignment"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                `;
+                DOM.assignmentList.appendChild(div);
+            });
+        }
+
+
+        // 6. Stats Rendering
+        function renderStats() {
+            if (!state.selectedSemester) return;
+            const view_subs = subjects.filter(s => s.semester === state.selectedSemester);
+            
+            DOM.statsList.innerHTML = '';
+            view_subs.forEach(s => {
+                // If the subject explicitly has 0 scheme hours across all three categories, 
+                // it's an unassigned or zero-credit subject, so it shouldn't show as fully green/complete if it's zero naturally.
+                const totallyZeroCredits = (s.req_l === 0 && s.req_t === 0 && s.req_p === 0);
+                const complete = !totallyZeroCredits && (s.rem_l <= 0) && (s.rem_t <= 0) && (s.rem_p <= 0);
+                
+                const div = document.createElement('div');
+                div.style.cssText = `
+                    background: rgba(255,255,255,0.02);
+                    border: 1px solid ${complete ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'};
+                    border-radius: 8px;
+                    padding: 1rem;
+                `;
+                
+                div.innerHTML = `
+                    <div style="font-weight: 500; font-size: 0.95rem; margin-bottom: 0.8rem; color: ${complete ? '#10b981' : 'var(--text-main)'};">
+                        ${s.name} <span style="font-size: 0.8rem; color: var(--text-muted);">(${s.code})</span>
+                        ${complete ? ' <i class="fa-solid fa-check-circle"></i>' : ''}
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; text-align: center;">
+                        <div style="background: rgba(0,0,0,0.3); border-radius: 4px; padding: 0.5rem; border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <div style="font-size: 0.7rem; color: #3b82f6; text-transform: uppercase;">Lectures</div>
+                            <div style="font-weight: bold; margin-top: 0.2rem; color: ${s.rem_l > 0 ? '#f59e0b' : '#10b981'}">${s.assigned_l} / ${s.req_l}</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.3); border-radius: 4px; padding: 0.5rem; border: 1px solid rgba(139, 92, 246, 0.2);">
+                            <div style="font-size: 0.7rem; color: #8b5cf6; text-transform: uppercase;">Tutorials</div>
+                            <div style="font-weight: bold; margin-top: 0.2rem; color: ${s.rem_t > 0 ? '#f59e0b' : '#10b981'}">${s.assigned_t} / ${s.req_t}</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.3); border-radius: 4px; padding: 0.5rem; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <div style="font-size: 0.7rem; color: #10b981; text-transform: uppercase;">Practicals</div>
+                            <div style="font-weight: bold; margin-top: 0.2rem; color: ${s.rem_p > 0 ? '#f59e0b' : '#10b981'}">${s.assigned_p} / ${s.req_p}</div>
+                        </div>
+                    </div>
+                `;
+                DOM.statsList.appendChild(div);
+            });
+        }
+
+        // 7. Event Listeners
+        if(DOM.facSearch) DOM.facSearch.addEventListener('input', (e) => renderFaculties(e.target.value));
+        if(DOM.semSelect) DOM.semSelect.addEventListener('change', handleSemesterChange);
+        if(DOM.secSelect) DOM.secSelect.addEventListener('change', handleSectionChange);
+        if(DOM.cats) DOM.cats.forEach(c => c.addEventListener('change', handleCategoryChange));
+        if(DOM.subSelect) DOM.subSelect.addEventListener('change', handleSubjectChange);
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            renderFaculties();
+        });
+
+    </script>
+</body>
+
+</html>

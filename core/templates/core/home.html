@@ -1,0 +1,411 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Central Hub for Academic Management Tools">
+    <title>Academix Studio</title>
+    <link rel="icon" type="image/png" href="{% static 'seat_manager/favicon.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'seat_manager/style_v2.css' %}">
+    <style>
+        .hub-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+
+        .hub-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .app-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            text-decoration: none;
+            color: var(--text-main);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .app-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .app-card:hover::before {
+            opacity: 1;
+        }
+
+        .app-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            background: -webkit-linear-gradient(45deg, #8b5cf6, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: transform 0.3s ease;
+        }
+
+        .app-card:hover .app-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .app-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 0.8rem;
+            color: var(--text-main);
+        }
+
+        .app-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .app-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .app-card:hover .app-btn {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
+        }
+
+        .app-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10B981;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .badge-upcoming {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        /* Profile Top-Right */
+        .profile-widget {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+    </div>
+
+    <!-- Theme Toggle isolated from previous container layout -->
+    <div class="profile-widget">
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">Academix Studio <i
+                class="fa-solid fa-graduation-cap" style="color:var(--primary-color);"></i></span>
+        <div style="width: 1px; height: 20px; background: var(--border-color);"></div>
+        <button id="theme-toggle" class="btn" aria-label="Toggle Dark/Light Mode"
+            style="background: transparent; border: none; padding: 0; color: var(--text-main); font-size: 1.1rem; cursor: pointer;">
+            <i class="fa-solid fa-sun" id="theme-icon"></i>
+        </button>
+        {% if request.user.is_authenticated %}
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <span style="color: var(--text-main); font-weight: 500;"><i class="fa-solid fa-user-circle"></i> {{
+                request.user.username }}</span>
+            <a href="{% url 'hod_logout' %}"
+                style="padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem;">Logout</a>
+        </div>
+        {% else %}
+        <a href="{% url 'hod_login' %}"
+            style="padding: 0.6rem 1.2rem; background: linear-gradient(135deg, #8b5cf6, #3b82f6); color: white; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem;"><i
+                class="fa-solid fa-arrow-right-to-bracket"></i> HoD Login</a>
+        {% endif %}
+    </div>
+
+    <main class="hub-container fade-in">
+        <header style="margin-bottom: 2rem;">
+            <div
+                style="display: inline-block; padding: 10px; background: rgba(139,92,246,0.1); border-radius: 50%; margin-bottom: 1rem;">
+                <i class="fa-solid fa-layer-group" style="font-size: 2.5rem; color: var(--primary-color);"></i>
+            </div>
+            <h1 class="gradient-text" style="font-size: 3rem; margin-bottom: 0.5rem;">Academix Studio</h1>
+            <p style="color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
+                Welcome to the centralized portal. Access powerful management tools to streamline your academic
+                workflow.
+            </p>
+        </header>
+
+        <div class="hub-grid slide-up delay-1">
+            <!-- App 1: Exam Seating -->
+            <a href="{% url 'index' %}" class="app-card">
+                <i class="fa-solid fa-chair app-icon"></i>
+                <h2 class="app-title">Exam Seating Manager</h2>
+                <p class="app-desc">Generate intelligent seating arrangements, master timetables, and print-ready
+                    attendance sheets effortlessly.</p>
+                <div class="app-btn">Launch App <i class="fa-solid fa-arrow-right"></i></div>
+            </a>
+
+            <!-- App 2: Timetable Generator -->
+            <a href="/timetable/" class="app-card" style="border-style: dashed;">
+                <div class="app-badge badge-upcoming"><i class="fa-solid fa-sparkles"></i> New Module</div>
+                <i class="fa-solid fa-calendar-days app-icon"
+                    style="background: -webkit-linear-gradient(45deg, #06b6d4, #3b82f6); -webkit-background-clip: text;"></i>
+                <h2 class="app-title">Timetable Generator</h2>
+                <p class="app-desc">Automatically create class-wise weekly schedules respecting faculty availability and
+                    subject constraints.</p>
+                <div class="app-btn" style="background: linear-gradient(135deg, #3b82f6, #06b6d4);">Access Alpha <i
+                        class="fa-solid fa-hammer"></i></div>
+            </a>
+
+            <!-- App 3: Practical Examination -->
+            <a href="{% url 'practical_index' %}" class="app-card">
+                <i class="fa-solid fa-clipboard-list app-icon" style="background: -webkit-linear-gradient(45deg, #f59e0b, #ef4444); -webkit-background-clip: text;"></i>
+                <h2 class="app-title">Practical Examination</h2>
+                <p class="app-desc">Generate formatted Attendance and Marks sheets for internal and external practical exams.</p>
+                <div class="app-btn" style="background: linear-gradient(135deg, #f59e0b, #ef4444);">Open Evaluator <i class="fa-solid fa-pen-ruler"></i></div>
+            </a>
+        </div>
+
+        <!-- ═══════════════════════════════════════════
+             CREDITS SECTION
+        ═══════════════════════════════════════════ -->
+        <div class="credits-card fade-in slide-up delay-2" style="
+            margin-top: 3rem;
+            padding: 1.5rem 2rem;
+            background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(59,130,246,0.08));
+            border: 1px solid rgba(139,92,246,0.25);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        ">
+            <!-- Glowing accent line -->
+            <div style="
+                position: absolute;
+                top: 0; left: 0; right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, #8b5cf6, #3b82f6, #06b6d4, #8b5cf6);
+                background-size: 200%;
+                animation: gradientShift 3s linear infinite;
+            "></div>
+
+            <!-- Avatar -->
+            <div style="position: relative; flex-shrink: 0;">
+                <div style="
+                    width: 72px; height: 72px;
+                    border-radius: 50%;
+                    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                    padding: 3px;
+                    box-shadow: 0 0 20px rgba(139,92,246,0.5);
+                ">
+                    <img src="{% static 'seat_manager/emoji.png' %}" alt="Yash Parashar"
+                        style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;">
+                </div>
+                <div style="
+                    position: absolute; bottom: -2px; right: -2px;
+                    background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                    border-radius: 50%; width: 22px; height: 22px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 0.7rem; border: 2px solid var(--bg-dark);
+                ">✨</div>
+            </div>
+
+            <!-- Text block -->
+            <div style="text-align: left;">
+                <div
+                    style="font-size: 0.7rem; color: var(--accent-color); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.2rem;">
+                    <i class="fa-solid fa-code" style="margin-right: 4px;"></i>Crafted &amp; Developed by
+                </div>
+                <div
+                    style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                    Asst. Prof. Yash Parashar
+                    <span style="
+                        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                        color: white;
+                        font-size: 0.6rem;
+                        padding: 2px 8px;
+                        border-radius: 20px;
+                        font-weight: 600;
+                        letter-spacing: 0.05em;
+                        vertical-align: middle;
+                    ">FACULTY</span>
+                </div>
+                <!-- Note: Institutional details are preserved in the developer credit -->
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.15rem;">
+                    <i class="fa-solid fa-building-columns" style="margin-right: 4px; color: var(--primary-color);"></i>
+                    Dept. of CS &amp; IT &nbsp;•&nbsp; IPS Academy
+                </div>
+            </div>
+
+            <!-- Right badge -->
+            <div style="margin-left: auto; text-align: center; opacity: 0.6;">
+                <div style="font-size: 1.8rem;">🎓</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; font-weight: 500;">IPS
+                    Academy</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===== FLOATING DEV CREDIT ICON ===== -->
+    <button id="dev-credit-float-btn" title="Developed by Asst. Prof. Yash Parashar" aria-label="Developer Credits"
+        style="
+            position: fixed;
+            bottom: 2rem;
+            left: 1.5rem;
+            z-index: 9997;
+            background: rgba(24,24,27,0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 30px;
+            padding: 0.4rem 0.85rem 0.4rem 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500;
+            opacity: 0.55;
+            transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.2s;
+            box-shadow: 0 2px 12px rgba(139,92,246,0.18);
+            animation: devFloatPulse 4s ease-in-out infinite;
+        "
+        onmouseover="this.style.opacity='1'; this.style.boxShadow='0 4px 20px rgba(139,92,246,0.45)'; this.style.color='var(--text-main)';"
+        onmouseout="this.style.opacity='0.55'; this.style.boxShadow='0 2px 12px rgba(139,92,246,0.18)'; this.style.color='var(--text-muted)';">
+        <img src="{% static 'seat_manager/emoji.png' %}" alt=""
+            style="width:22px; height:22px; border-radius:50%; object-fit:cover; border:1px solid rgba(139,92,246,0.4);">
+        <span>Developed by <strong style="color: var(--primary-color);">Asst. Prof. Yash Parashar</strong></span>
+    </button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const devBtn = document.getElementById('dev-credit-float-btn');
+            if (devBtn) {
+                devBtn.addEventListener('click', () => {
+                    const creditsCard = document.querySelector('.credits-card');
+                    if (creditsCard) {
+                        creditsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        creditsCard.style.transition = 'box-shadow 0.3s ease';
+                        creditsCard.style.boxShadow = '0 0 0 3px rgba(139,92,246,0.6)';
+                        setTimeout(() => { creditsCard.style.boxShadow = ''; }, 1800);
+                    }
+                    devBtn.style.opacity = '0';
+                    devBtn.style.pointerEvents = 'none';
+                    devBtn.style.transform = 'translateY(10px)';
+                });
+
+                const creditsCard = document.querySelector('.credits-card');
+                if (creditsCard && 'IntersectionObserver' in window) {
+                    const obs = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                devBtn.style.opacity = '0';
+                                devBtn.style.pointerEvents = 'none';
+                                devBtn.style.transform = 'translateY(10px)';
+                            } else {
+                                devBtn.style.opacity = '0.55';
+                                devBtn.style.pointerEvents = 'auto';
+                                devBtn.style.transform = 'translateY(0)';
+                            }
+                        });
+                    }, { threshold: 0.1 });
+                    obs.observe(creditsCard);
+                }
+            }
+        });
+    </script>
+
+    <script>
+        // Theme toggler logic from previous app
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+
+        // Check for saved theme preference or prefer-color-scheme
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'light' || (!savedTheme && !prefersDark)) {
+            document.body.classList.add('light-mode');
+            themeIcon.classList.replace('fa-sun', 'fa-moon');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            if (document.body.classList.contains('light-mode')) {
+                themeIcon.classList.replace('fa-sun', 'fa-moon');
+                localStorage.setItem('theme', 'light');
+            } else {
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+    </script>
+</body>
+
+</html>

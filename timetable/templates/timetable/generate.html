@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Timetable</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'seat_manager/style_v2.css' %}">
+    <style>
+        .generate-container {
+            max-width: 600px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background: var(--bg-card);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 1.2rem;
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 1.5rem;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="generate-container">
+        <h2><i class="fa-solid fa-microchip" style="color: var(--primary-color);"></i> AI Timetable Engine</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Select a department to execute the constraint
+            satisfaction scheduling algorithm.</p>
+
+        {% if messages %}
+        {% for message in messages %}
+        <div
+            style="padding: 1rem; margin-bottom: 1rem; border-radius: 8px; font-weight: 500; {% if message.tags == 'success' %}background: rgba(16,185,129,0.1); color: #10B981;{% else %}background: rgba(239,68,68,0.1); color: #EF4444;{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="input-wrapper floating-label" style="text-align: left;">
+                <select name="department" id="department" required
+                    style="width: 100%; padding: 1.5rem 1rem 0.5rem 1rem; border-radius: 12px; background: rgba(0,0,0,0.1); border: 1px solid var(--border-color); color: var(--text-main); font-size: 1.1rem; font-family: 'Outfit';">
+                    <option value="" disabled selected>Choose Department</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.id }}">{{ dept.code }} - {{ dept.name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="department" style="left: 1rem;">Target Department</label>
+            </div>
+
+            <button type="submit" class="generate-btn">
+                <i class="fa-solid fa-rocket"></i> Execute Generation
+            </button>
+        </form>
+        <a href="{% url 'timetable_dashboard' %}"
+            style="display: inline-block; margin-top: 1.5rem; color: var(--text-muted); text-decoration: none;"><i
+                class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+    </div>
+</body>
+
+</html>

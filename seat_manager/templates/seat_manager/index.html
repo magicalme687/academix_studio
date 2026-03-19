@@ -30,6 +30,10 @@
                 style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
                 <i class="fa-solid fa-sun" id="theme-icon" style="font-size: 1.25rem;"></i>
             </button>
+            <a href="/" class="btn outline-btn" aria-label="Home"
+                style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border-color); cursor: pointer; color: var(--primary-color); font-size: 1.25rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; text-decoration: none;">
+                <i class="fa-solid fa-home"></i>
+            </a>
             <button id="help-btn" aria-label="Help Guide"
                 style="border-radius: 50%; width: 50px; height: 50px; padding: 0; background: var(--bg-card); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border-color); cursor: pointer; color: var(--primary-color); font-size: 1.25rem; transition: all 0.2s;">
                 <i class="fa-solid fa-circle-question"></i>
@@ -57,7 +61,7 @@
                 <!-- Institute specific print headers -->
                 <div class="input-wrapper floating-label" style="grid-column: span 2;">
                     <input type="text" id="institute-name" placeholder=" " required
-                        value="IPS Academy, Institute of Engineering and Science">
+                        value="IPS Academy, Institute of Engg. & Science, Indore (0808)" placeholder="Your Institute Name">
                     <label for="institute-name">Institute Name (For Print Header)</label>
                     <i class="fa-solid fa-university input-icon"></i>
                 </div>
@@ -745,7 +749,7 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
                             <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
                                 Enter <b>Institute Name</b> (shown as heading on all printed pages).<br>
                                 The <b>Address / Contact</b> text box below it adds address/contact lines under the name
-                                in every header (default: IPS Academy address).<br>
+                                in every header (default: left blank).<br>
                                 Upload optional <b>Institute Logo</b>, select <b>Department</b> &amp; <b>MID SEM</b>
                                 number.<br>
                                 Choose <b>Subject Source</b>:
@@ -839,9 +843,10 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
                             <p style="margin:0; font-size:0.85rem; color:var(--text-muted); line-height:1.65;">
                                 Click <b>+ Add Room</b> to append a new room post-generation.<br>
                                 Set its name, rows, columns, and seating pattern.<br>
-                                <b>Student data is optional</b> — leave the file upload empty to create a blank room,
-                                then populate it by dragging students in from the <b>Swap Buffer</b> via Edit Seating
-                                mode.
+                                <b>Student data is optional</b> — leave the file upload empty to create a blank
+                                room.<br>
+                                • Populate a blank room by dragging students in from the <b>Swap Buffer</b>.<br>
+                                • OR <b>double-click</b> any empty seat to manually type in an Enrollment Number!
                             </p>
                         </div>
                     </div>
@@ -1112,7 +1117,7 @@ E-mail: hod.compsc@ipsacademy.org, officecsit@ipsacademy.org</textarea>
         })();
     </script>
 
-    <script src="{% static 'seat_manager/script_v2.js' %}"></script>
+    <script src="{% static 'seat_manager/script_v2.js' %}?v=1.2"></script>
 </body>
 
 </html>

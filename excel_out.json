@@ -1,0 +1,25 @@
+{
+  "len": 231,
+  "r0": [
+    "S.No.",
+    "Enrollment No. (I Year)",
+    "Student Name (I Year)",
+    "Enrollment No. (II Year)",
+    "Student Name (II Year)",
+    "Enrollment No. (III Year)",
+    "Student Name (III Year)",
+    "Enrollment No. (IV Year)",
+    "Student Name (IV Year)"
+  ],
+  "r1": [
+    "1",
+    "nan",
+    "nan",
+    "0808CI241002",
+    "AAGAM JAIN",
+    "0808CI231001",
+    "AAKASH PRAJAPATI",
+    "0808CI221002",
+    "AYUSH KIRAR"
+  ]
+}

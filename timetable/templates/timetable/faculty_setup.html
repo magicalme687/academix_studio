@@ -1,0 +1,327 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Setup | Academic Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'seat_manager/style_v2.css' %}">
+    <style>
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background: rgba(0, 0, 0, 0.1);
+            margin-top: 1rem;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary-color);
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .btn-primary {
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: 0.3s;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            padding: 0.8rem 1.5rem;
+            background: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: 0.3s;
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .faculty-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .faculty-card {
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .faculty-card:hover {
+            border-color: rgba(139, 92, 246, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .faculty-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #8b5cf6, #3b82f6);
+        }
+
+        .faculty-name {
+            font-weight: 700;
+            color: var(--text-main);
+            font-size: 1.2rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .faculty-code {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .faculty-designation {
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        .faculty-meta {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+        }
+
+        .top-nav {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+
+<body data-theme="dark">
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+    </div>
+
+    <div class="top-nav fade-in">
+        <button class="nav-btn" onclick="toggleTheme()" id="theme-btn">
+            <i class="fa-solid fa-sun"></i>
+        </button>
+        <a href="{% url 'timetable_dashboard' %}" class="nav-btn"><i class="fa-solid fa-arrow-left"></i></a>
+    </div>
+
+    <main class="container">
+        <header class="hero-section fade-in">
+            <h1 class="gradient-text"><i class="fa-solid fa-users-rectangle"></i> Faculty Roster Importer</h1>
+            <p>Department of {{ department.name }} ({{ department.code }})</p>
+        </header>
+
+        {% if messages %}
+        <div class="slide-up">
+            {% for message in messages %}
+            <div
+                style="padding: 1rem; border-radius: 12px; font-weight: 500; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem; background: {% if message.tags == 'success' %}rgba(16, 185, 129, 0.1){% else %}rgba(239, 68, 68, 0.1){% endif %}; color: {% if message.tags == 'success' %}#10B981{% else %}#EF4444{% endif %}; border: 1px solid {% if message.tags == 'success' %}rgba(16,185,129,0.2){% else %}rgba(239,68,68,0.2){% endif %};">
+                <i
+                    class="fa-solid {% if message.tags == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;" class="slide-up delay-1">
+            <section class="glass-card">
+                <div class="card-header" style="margin-bottom: 1.5rem;">
+                    <h2><i class="fa-solid fa-user-plus" style="color: #3b82f6;"></i> Add Faculty Manually</h2>
+                </div>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                        <div style="flex: 2;">
+                            <label class="form-label" style="color: var(--text-muted); font-size: 0.9rem;">Full Name</label>
+                            <input type="text" name="name" class="input-control" placeholder="e.g. Dr. John Doe" required style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: white;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label class="form-label" style="color: var(--text-muted); font-size: 0.9rem;">Code</label>
+                            <input type="text" name="short_code" class="input-control" placeholder="e.g. JD" required style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: white;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label class="form-label" style="color: var(--text-muted); font-size: 0.9rem;">Designation</label>
+                        <input type="text" name="designation" class="input-control" placeholder="e.g. Asst. Professor" style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: white;">
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <label class="form-label" style="color: #f59e0b; font-size: 0.9rem; font-weight: 600;"><i class="fa-solid fa-star"></i> Preferred Subjects (Hold Ctrl to select multiple)</label>
+                        <select name="preferred_subjects" class="input-control" multiple style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3); background: rgba(0,0,0,0.2); color: white; height: 120px;">
+                            {% for sub in subjects %}
+                                <option value="{{ sub.id }}">[Sem {{ sub.semester }}] {{ sub.code }} - {{ sub.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" name="add_faculty" class="btn-primary" style="width: 100%; justify-content: center;"><i class="fa-solid fa-check"></i> Add/Update Faculty</button>
+                </form>
+            </section>
+
+            <section class="glass-card">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <h2><i class="fa-solid fa-file-excel" style="color: #10B981;"></i> Bulk Upload</h2>
+                        <p class="subtitle" style="margin-top: 0.5rem; font-size: 0.9rem;">Upload a complete roster of teachers.</p>
+                    </div>
+                    <a href="{% url 'download_faculty_template' %}" class="btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i class="fa-solid fa-download"></i> Template</a>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <label for="faculty_file" class="upload-zone" style="display: block; padding: 2rem;">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 0.5rem;"></i>
+                        <h4 style="color: var(--text-main); margin: 0 0 0.5rem 0;">Click to upload</h4>
+                        <p style="color: var(--text-muted); margin: 0; font-size: 0.85rem;">XLSX files only</p>
+                        <input type="file" name="faculty_file" id="faculty_file" accept=".xlsx" style="display: none;" required onchange="document.getElementById('filename-display').innerText = this.files[0].name">
+                    </label>
+                    <div id="filename-display" style="text-align: center; margin-top: 1rem; font-weight: 500; font-size: 0.9rem; color: var(--text-main);"></div>
+
+                    <div style="text-align: right; margin-top: 1rem;">
+                        <button type="submit" class="btn-primary" style="background: linear-gradient(135deg, #10B981, #059669);"><i class="fa-solid fa-gears"></i> Import Data</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <section class="glass-card slide-up delay-2" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-id-badge" style="color: #3b82f6;"></i> Available Faculty <span
+                        style="font-size: 1rem; background: rgba(59,130,246,0.1); padding: 0.2rem 0.8rem; border-radius: 20px; color: #3b82f6; vertical-align: middle; margin-left: 0.5rem;">
+                        {{ faculties.count }}
+                    </span></h2>
+            </div>
+
+            {% if faculties %}
+            <div class="faculty-grid">
+                {% for fac in faculties %}
+                <div class="faculty-card">
+                    <span class="faculty-code">{{ fac.short_code }}</span>
+                    <h3 class="faculty-name">
+                        <i class="fa-solid fa-user-tie" style="color: var(--text-muted); font-size: 1rem;"></i>
+                        {{ fac.name }}
+                    </h3>
+                    <p class="faculty-designation">{{ fac.designation }}</p>
+
+                    <div class="faculty-meta">
+                        <span title="Max daily lectures">
+                            <i class="fa-solid fa-calendar-day"></i> {{ fac.max_lectures_per_day }} hrs / day
+                        </span>
+                        <span title="Max weekly lectures">
+                            <i class="fa-solid fa-calendar-week"></i> {{ fac.max_lectures_per_week }} hrs / week
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 4rem 2rem; color: var(--text-muted);">
+                <i class="fa-solid fa-users-slash" style="font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <p style="font-size: 1.1rem;">No faculty members found. Please upload the faculty list template.</p>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                body.removeAttribute('data-theme');
+                document.querySelector('#theme-btn i').classList.replace('fa-sun', 'fa-moon');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                document.querySelector('#theme-btn i').classList.replace('fa-moon', 'fa-sun');
+            }
+        }
+    </script>
+</body>
+
+</html>

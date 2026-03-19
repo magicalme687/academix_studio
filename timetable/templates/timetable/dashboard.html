@@ -1,0 +1,230 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HoD Dashboard | Timetable Module</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'seat_manager/style_v2.css' %}">
+    <style>
+        .action-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: 0.3s;
+            text-decoration: none;
+            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.15);
+        }
+
+        .action-icon {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        .action-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        .action-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 0;
+        }
+
+        .stats-card {
+            flex: 1;
+            min-width: 250px;
+            background: rgba(139, 92, 246, 0.05);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+        }
+
+        .top-nav {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.1) !important;
+            color: #EF4444 !important;
+            border-color: rgba(239, 68, 68, 0.3) !important;
+        }
+
+        .btn-logout:hover {
+            background: #EF4444 !important;
+            color: white !important;
+        }
+    </style>
+</head>
+
+<body data-theme="dark">
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+    </div>
+
+    <div class="top-nav fade-in">
+        <button class="nav-btn" onclick="toggleTheme()" id="theme-btn"
+            style="padding: 0; width: 45px; height: 45px; justify-content: center;">
+            <i class="fa-solid fa-sun"></i>
+        </button>
+        <a href="{% url 'home' %}" class="nav-btn"><i class="fa-solid fa-home"></i> Hub</a>
+        <a href="{% url 'hod_logout' %}" class="nav-btn btn-logout"><i class="fa-solid fa-power-off"></i> Logout</a>
+    </div>
+
+    <main class="container">
+        <header class="hero-section fade-in">
+            <h1 class="gradient-text"><i class="fa-solid fa-calendar-days"></i> Timetable Manager</h1>
+            <p>Welcome, {{ request.user.first_name }}! Configure the automated scheduling system for the Department of
+                {{ department.name }} at {{ department.institute.code }}.</p>
+        </header>
+
+        {% if messages %}
+        <div class="slide-up">
+            {% for message in messages %}
+            <div
+                style="padding: 1rem; border-radius: 12px; font-weight: 500; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem; background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16,185,129,0.2);">
+                <i
+                    class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <section class="glass-card slide-up delay-1">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-chart-pie"></i> Department Overview</h2>
+                <p class="subtitle">Current database entities available for generating timetables.</p>
+            </div>
+            <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                <div class="stats-card">
+                    <i class="fa-solid fa-book stat-icon"></i>
+                    <div>
+                        <h3 style="margin: 0; font-size: 2rem; color: var(--text-main);">{{ subjects_count }}</h3>
+                        <p
+                            style="margin: 0; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; text-transform: uppercase;">
+                            Total Subjects</p>
+                    </div>
+                </div>
+                <div class="stats-card">
+                    <i class="fa-solid fa-users stat-icon" style="color: #3b82f6;"></i>
+                    <div>
+                        <h3 style="margin: 0; font-size: 2rem; color: var(--text-main);">{{ faculties_count }}</h3>
+                        <p
+                            style="margin: 0; color: var(--text-muted); font-size: 0.9rem; font-weight: 600; text-transform: uppercase;">
+                            Total Faculty</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card slide-up delay-2" style="margin-top: 1.5rem;">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-diagram-project"></i> Workflow Management</h2>
+                <p class="subtitle">Follow the steps below to produce collision-free timetables.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                <a href="{% url 'scheme_setup' %}" class="action-card">
+                    <i class="fa-solid fa-cloud-arrow-up action-icon"></i>
+                    <h3 class="action-title">1. Upload Scheme</h3>
+                    <p class="action-desc">Define L-T-P credits required for this semester via Excel.</p>
+                </a>
+
+                <a href="{% url 'faculty_setup' %}" class="action-card">
+                    <i class="fa-solid fa-chalkboard-user action-icon" style="color: #3b82f6;"></i>
+                    <h3 class="action-title">2. Upload Faculty</h3>
+                    <p class="action-desc">Upload the teaching staff Excel.</p>
+                </a>
+
+                <a href="{% url 'session_setup' %}" class="action-card">
+                    <i class="fa-solid fa-layer-group action-icon" style="color: #f59e0b;"></i>
+                    <h3 class="action-title">3. Define Sections</h3>
+                    <p class="action-desc">Configure active semesters and student groups.</p>
+                </a>
+
+                <a href="{% url 'workload_allocation' %}" class="action-card">
+                    <i class="fa-solid fa-network-wired action-icon" style="color: #8b5cf6;"></i>
+                    <h3 class="action-title">4. Workload Allocation</h3>
+                    <p class="action-desc">Assign Faculty constraints based on L-T-P scheme.</p>
+                </a>
+
+                <a href="{% url 'generate_timetable' %}" class="action-card">
+                    <i class="fa-solid fa-wand-magic-sparkles action-icon" style="color: #10B981;"></i>
+                    <h3 class="action-title">5. Generate Timetable</h3>
+                    <p class="action-desc">Execute the AI constraint scheduler and produce visual charts.</p>
+                </a>
+            </div>
+        </section>
+    </main>
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                body.removeAttribute('data-theme');
+                document.querySelector('#theme-btn i').classList.replace('fa-sun', 'fa-moon');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                document.querySelector('#theme-btn i').classList.replace('fa-moon', 'fa-sun');
+            }
+        }
+    </script>
+</body>
+
+</html>

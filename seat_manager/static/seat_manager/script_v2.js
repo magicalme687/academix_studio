@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 formData.append('student_data', JSON.stringify({ "I Yr": [], "II Yr": [], "III Yr": [], "IV Yr": [] }));
             }
 
-            const response = await fetch('/generate/', {
+            const response = await fetch('/seat_manager/generate/', {
                 method: 'POST',
                 body: formData
             });
@@ -1770,7 +1770,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Send API Request
         try {
-            const response = await fetch('/generate/', {
+            const response = await fetch('/seat_manager/generate/', {
                 method: 'POST',
                 // CSRF Token header normally needed, but we used @csrf_exempt on the view for simplicity in this script setup. 
                 // However, adding it is best practice if omitting decorator:
@@ -1865,7 +1865,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (h3) sheetName = h3.textContent.replace('SEATING CHART', '').trim().substring(0, 30).replace(/[\\/?*[\]]/g, '');
             else {
                 const h1 = container.querySelector('h1');
-                if (h1 && h1.textContent !== 'IPS Academy, Institute of Engineering and Science') sheetName = h1.textContent.substring(0, 30).replace(/[\\/?*[\]]/g, '');
+                if (h1 && h1.textContent !== 'Your Institute Name' && h1.textContent.trim() !== '') sheetName = h1.textContent.substring(0, 30).replace(/[\\/?*[\]]/g, '');
             }
 
             // Ensure unique names
