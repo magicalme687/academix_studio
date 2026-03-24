@@ -327,7 +327,8 @@ def generate_seating(request):
                     for col in range(cols):
                         years_in_column = set()
                         for row in range(rows):
-                            if year_map[row][col]: years_in_column.add(year_map[row][col])
+                            if seating[row][col] and seating[row][col] != "" and year_map[row][col]:
+                                years_in_column.add(year_map[row][col])
                         column_headers.append("/".join(sorted(years_in_column)) if years_in_column else "")
                         
                     room_seating_matrix.append(column_headers)

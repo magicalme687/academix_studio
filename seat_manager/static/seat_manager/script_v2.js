@@ -2034,17 +2034,22 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('main-content').classList.add('hidden');
         outputContent.classList.remove('hidden');
 
-        const buildPrintHeader = (subtitle) => `
+        const buildPrintHeader = (subtitle) => {
+            const midSemType = document.getElementById('mid-sem')?.value || '1';
+            const examPrefix = midSemType === 'R' ? 'REMEDIAL ' : `MST-${midSemType} `;
+
+            return `
             <div class="print-header" style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 2rem; border-bottom: 3px double var(--border-color); padding-bottom: 1rem;">
                 ${instituteLogoBase64 ? `<img src="${instituteLogoBase64}" class="print-logo" alt="Logo">` : ''}
                 <div style="text-align: center;">
                     <h1 style="font-size: 2rem; margin: 0; color: var(--text-main); text-transform: uppercase; font-family: 'Times New Roman', Times, serif;">${instituteName}</h1>
                     <p style="margin: 0.15rem 0 0 0; font-size: 1rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">Department of ${departmentName}</p>
                     ${instituteSubheader ? `<p style="margin: 0.1rem 0 0 0; font-size: 0.9rem; color: var(--text-muted); white-space: pre-line; line-height: 1.5;">${instituteSubheader}</p>` : ''}
-                    <p style="margin: 0.2rem 0 0 0; font-size: 1.2rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">${subtitle}</p>
+                    <p style="margin: 0.2rem 0 0 0; font-size: 1.2rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">${examPrefix}${subtitle}</p>
                 </div>
             </div>
-        `;
+            `;
+        };
 
         // Build Timetable Tab
         // Build Master Timetable Tab
@@ -2173,14 +2178,35 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <table class="seating-table" data-table-id="${tableId}">
                                         <thead>
                                             <tr>
-                                                ${plan.headers.map(h => `<th>${h}</th>`).join('')}
+                                                ${(() => {
+                        // Compute which columns are fully empty (no students)
+                        const numCols = plan.headers.length;
+                        const colEmpty = Array(numCols).fill(true);
+                        plan.matrix.forEach(row => { // Iterate through all rows of the matrix
+                            row.forEach((cell, ci) => {
+                                if (cell && cell.student) colEmpty[ci] = false;
+                            });
+                        });
+                        return plan.headers.map((h, ci) => {
+                            const label = colEmpty[ci] ? '' : h;
+                            const isBenchDiv = ((ci + 1) % 3 === 0) && (ci < numCols - 1);
+                            const isBenchStart = (ci % 3 === 0) && ci > 0;
+                            const cls = [isBenchDiv ? 'bench-divider' : '', isBenchStart ? 'bench-start' : ''].filter(Boolean).join(' ');
+                            return `<th class="${cls}">${label}</th>`;
+                        }).join('');
+                    })()}
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            ${plan.matrix.slice(1).map(row => `
+                                         <tbody>
+                                             ${plan.matrix.slice(1).map(row => `
                                                 <tr>
-                                                    ${row.map(cell => {
-                        if (!cell.student) return `<td class="chart-seat empty-seat" draggable="true" title="Drag to rearrange or click to fill seat."></td>`;
+                                                    ${row.map((cell, ci) => {
+                        const numCols = row.length;
+                        const isBenchDiv = ((ci + 1) % 3 === 0) && (ci < numCols - 1);
+                        const isBenchStart = (ci % 3 === 0) && ci > 0;
+                        const benchClass = [isBenchDiv ? 'bench-divider' : '', isBenchStart ? 'bench-start' : ''].filter(Boolean).join(' ');
+                        const benchClassStr = benchClass ? ' ' + benchClass : '';
+                        if (!cell || !cell.student) return `<td class="chart-seat empty-seat${benchClassStr}" draggable="true" title="Drag to rearrange or click to fill seat."></td>`;
 
                         // Handle both old format (string) and new format (object)
                         // Backend sends { student: "enrollment_str", name: "...", year: "..." }
@@ -2192,7 +2218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (enrollmentStr.length > 11) lenClass = 'len-long';
                         else if (enrollmentStr.length > 8) lenClass = 'len-medium';
 
-                        return `<td class="chart-seat occupied-seat" draggable="true" data-enrollment="${enrollmentStr}" data-name="${nameStr}" data-year="${cell.year}" title="${nameStr ? enrollmentStr + ' - ' + nameStr : enrollmentStr}\nDrag to rearrange.">
+                        return `<td class="chart-seat occupied-seat${benchClassStr}" draggable="true" data-enrollment="${enrollmentStr}" data-name="${nameStr}" data-year="${cell.year}" title="${nameStr ? enrollmentStr + ' - ' + nameStr : enrollmentStr}\nDrag to rearrange.">
                                     <div class="student-id ${lenClass}">${enrollmentStr}</div>
                                     <div class="year-badge ${cell.year.replace(' ', '-')}">${cell.year}</div>
                                 </td>`;
@@ -2321,12 +2347,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         Object.keys(draggedDataset).forEach(k => this.dataset[k] = draggedDataset[k]);
                         Object.keys(thisDataset).forEach(k => window.draggedSeat.dataset[k] = thisDataset[k]);
 
-                        // Swap CSS Classes, preserving the base structural classes
-                        const thisClasses = [...this.classList].filter(c => !['chart-seat', 'dragging', 'drag-over', 'highlight-drop'].includes(c));
-                        const draggedClasses = [...window.draggedSeat.classList].filter(c => !['chart-seat', 'dragging', 'drag-over', 'highlight-drop'].includes(c));
+                        // Preserve structural classes on the corresponding DOM elements
+                        const getStructuralClasses = (el) => [...el.classList].filter(c => ['bench-divider', 'bench-start'].includes(c));
+                        const thisStructural = getStructuralClasses(this);
+                        const draggedStructural = getStructuralClasses(window.draggedSeat);
 
-                        this.className = 'chart-seat ' + draggedClasses.join(' ');
-                        window.draggedSeat.className = 'chart-seat ' + thisClasses.join(' ');
+                        // Swap content-related CSS Classes
+                        const thisContentClasses = [...this.classList].filter(c => !['chart-seat', 'dragging', 'drag-over', 'highlight-drop', 'bench-divider', 'bench-start', 'empty-seat', 'occupied-seat'].includes(c));
+                        const draggedContentClasses = [...window.draggedSeat.classList].filter(c => !['chart-seat', 'dragging', 'drag-over', 'highlight-drop', 'bench-divider', 'bench-start', 'empty-seat', 'occupied-seat'].includes(c));
+
+                        // Determine new occupancy state
+                        const thisIsOccupied = this.dataset.enrollment ? 'occupied-seat' : 'empty-seat';
+                        const draggedIsOccupied = window.draggedSeat.dataset.enrollment ? 'occupied-seat' : 'empty-seat';
+
+                        // Apply new classes combining base + structural + swapped content classes + occupancy
+                        this.className = ['chart-seat', thisIsOccupied, ...thisStructural, ...draggedContentClasses].join(' ');
+                        window.draggedSeat.className = ['chart-seat', draggedIsOccupied, ...draggedStructural, ...thisContentClasses].join(' ');
 
                         // Add flash highlight
                         this.classList.add('highlight-drop');
@@ -2398,17 +2434,22 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         };
 
-        const buildPrintHeader = (subtitle) => `
+        const buildPrintHeader = (subtitle) => {
+            const midSemType = document.getElementById('mid-sem')?.value || '1';
+            const examPrefix = midSemType === 'R' ? 'REMEDIAL ' : `MST-${midSemType} `;
+
+            return `
             <div class="print-header" style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 2rem; border-bottom: 3px double var(--border-color); padding-bottom: 1rem;">
                 ${instituteLogoBase64 ? `<img src="${instituteLogoBase64}" class="print-logo" alt="Logo">` : ''}
                 <div style="text-align: center;">
                     <h1 style="font-size: 2rem; margin: 0; color: var(--text-main); text-transform: uppercase; font-family: 'Times New Roman', Times, serif;">${instituteName}</h1>
                     <p style="margin: 0.15rem 0 0 0; font-size: 1rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">Department of ${departmentName}</p>
                     ${instituteSubheader ? `<p style="margin: 0.1rem 0 0 0; font-size: 0.9rem; color: var(--text-muted); white-space: pre-line; line-height: 1.5;">${instituteSubheader}</p>` : ''}
-                    <p style="margin: 0.2rem 0 0 0; font-size: 1.2rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">${subtitle}</p>
+                    <p style="margin: 0.2rem 0 0 0; font-size: 1.2rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">${examPrefix}${subtitle}</p>
                 </div>
             </div>
-        `;
+            `;
+        };
 
         // Build a quick lookup: "date|||shift" -> { yr -> subjectCode }
         const subjectLookup = {};
@@ -2424,9 +2465,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const yearExamDates = data.exam_dates_map[yr] || [];
 
             if (students.length > 0 && yearExamDates.length > 0) {
-                masterAttendanceHtml += `
-            <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem;">
-                    ${buildPrintHeader(`GLOBAL ATTENDANCE • YEAR: ${yr}`)}
+                const PAGE_SIZE = 28;
+                const numPages = Math.ceil(students.length / PAGE_SIZE) || 1;
+                for (let page = 0; page < numPages; page++) {
+                    const isLastPage = (page === numPages - 1);
+                    const pageStudents = students.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+                    const startIndex = page * PAGE_SIZE;
+
+                    masterAttendanceHtml += `
+            <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem; display: flex; flex-direction: column;">
+                    ${buildPrintHeader(`GLOBAL ATTENDANCE • YEAR: ${yr}${numPages > 1 ? ` (Page ${page + 1}/${numPages})` : ''}`)}
                     <table class="attendance-table" style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr>
@@ -2454,11 +2502,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             </tr>
                         </thead>
                         <tbody>
-                            ${students.map((stu, idx) => {
-                    const enrollmentStr = typeof stu === 'object' ? (stu.enrollment || '') : stu;
-                    const nameStr = typeof stu === 'object' ? (stu.name || '') : '';
+                            ${pageStudents.map((stu, i) => {
+                        const idx = startIndex + i;
+                        const enrollmentStr = typeof stu === 'object' ? (stu.enrollment || '') : stu;
+                        const nameStr = typeof stu === 'object' ? (stu.name || '') : '';
 
-                    return `
+                        return `
                                 <tr>
                                     <td style="border: 1px solid var(--border-color); padding: 12px;">${idx + 1}</td>
                                     <td style="font-size: 10pt; font-weight: bold; border: 1px solid var(--border-color); padding: 12px;">
@@ -2468,17 +2517,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                         ${nameStr}
                                     </td>
                                     ${yearExamDates.length > 0 ?
-                            yearExamDates.map(() => `<td></td>`).join('') :
-                            `<td></td>`
-                        }
+                                    yearExamDates.map(() => `<td></td>`).join('') :
+                                    `<td></td>`
+                                    }
                                 </tr>
                                 `;
-                }).join('')}
+                    }).join('')}
                         </tbody>
                     </table>
-                    ${renderFooterHtml(true, 'attendance')}
+                    <div style="flex-grow: 1;"></div>
+                    ${renderFooterHtml(isLastPage, 'attendance')}
                 </div >
             `;
+                }
             }
         });
         document.getElementById('tab-attendance-master').innerHTML = masterAttendanceHtml;
@@ -2533,10 +2584,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 sheetsForRoom.sort((a, b) => yearOrder.indexOf(a.year) - yearOrder.indexOf(b.year));
 
                 sheetsForRoom.forEach((sheet, idx) => {
-                    let subtitle = `ROOM ATTENDANCE • ${sheet.room_name} • ${sheet.year}`;
+                    const PAGE_SIZE = 28;
+                    const numPages = Math.ceil(sheet.students.length / PAGE_SIZE) || 1;
 
-                    roomAttendanceHtml += `
-            <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem; overflow-x: auto; position: relative;">
+                    for (let page = 0; page < numPages; page++) {
+                        const isLastPage = (page === numPages - 1);
+                        const pageStudents = sheet.students.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+                        const startIndex = page * PAGE_SIZE;
+
+                        let subtitle = `ROOM ATTENDANCE • ${sheet.room_name} • ${sheet.year}${numPages > 1 ? ` (Page ${page + 1}/${numPages})` : ''}`;
+
+                        roomAttendanceHtml += `
+            <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem; overflow-x: auto; position: relative; display: flex; flex-direction: column;">
                                         ${buildPrintHeader(subtitle)}
                                         <table class="attendance-table" style="width: 100%; border-collapse: collapse;">
                                             <thead>
@@ -2545,19 +2604,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                                     <th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Enrollment No</th>
                                                     <th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Student Name</th>
                                                     ${sheet.sessions.map(s => {
-                        const sKey = `${s.date}|||${s.shift}`;
-                        const sEntry = subjectLookup[sKey] || {};
-                        const sCode = sEntry[sheet.year] || '';
-                        return `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05); min-width:90px;">Sign<br><span style="font-size: 0.8rem; font-weight: normal;">${s.date}<br>${s.shift}</span>${sCode && sCode !== '-' ? `<br><span style="font-size: 0.75rem; font-style: italic; color: var(--accent-color); font-weight: 600;">${sCode}</span>` : ''}</th>`;
-                    }).join('')}
+                            const sKey = `${s.date}|||${s.shift}`;
+                            const sEntry = subjectLookup[sKey] || {};
+                            const sCode = sEntry[sheet.year] || '';
+                            return `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05); min-width:90px;">Sign<br><span style="font-size: 0.8rem; font-weight: normal;">${s.date}<br>${s.shift}</span>${sCode && sCode !== '-' ? `<br><span style="font-size: 0.75rem; font-style: italic; color: var(--accent-color); font-weight: 600;">${sCode}</span>` : ''}</th>`;
+                        }).join('')}
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                ${sheet.students.map((stu, idx) => {
-                        const enrollmentStr = typeof stu === 'object' ? (stu.enrollment || '') : stu;
-                        const nameStr = typeof stu === 'object' ? (stu.name || '') : '';
+                                                ${pageStudents.map((stu, i) => {
+                            const idx = startIndex + i;
+                            const enrollmentStr = typeof stu === 'object' ? (stu.enrollment || '') : stu;
+                            const nameStr = typeof stu === 'object' ? (stu.name || '') : '';
 
-                        return `
+                            return `
                                                     <tr>
                                                         <td style="border: 1px solid var(--border-color); padding: 12px;">${idx + 1}</td>
                                                         <td style="border: 1px solid var(--border-color); padding: 12px; font-size: 10pt; font-weight: bold;">
@@ -2569,12 +2629,28 @@ document.addEventListener('DOMContentLoaded', () => {
                                                         ${sheet.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;"></td>`).join('')}
                                                     </tr>
                                                     `;
-                    }).join('')}
+                        }).join('')}
+                                                ${isLastPage ? `
+                                                <tr>
+                                                    <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Total:</td>
+                                                    ${sheet.sessions.map(() => `<td style="text-align: center; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">${sheet.students.length}</td>`).join('')}
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Present:</td>
+                                                    ${sheet.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;"></td>`).join('')}
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Absent:</td>
+                                                    ${sheet.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;"></td>`).join('')}
+                                                </tr>
+                                                ` : ''}
                                             </tbody>
                                         </table>
-                                        ${renderFooterHtml(idx === sheetsForRoom.length - 1, 'attendance')}
+                                        <div style="flex-grow: 1;"></div>
+                                        ${renderFooterHtml(idx === sheetsForRoom.length - 1 && isLastPage, 'attendance')}
                                     </div>
                     `;
+                    }
                 });
 
                 roomAttendanceHtml += `</div>`;
@@ -2608,10 +2684,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 domHeaders.push(input ? input.value.trim() : th.textContent.trim());
             });
             const effectiveHeaders = domHeaders.length > 0 ? domHeaders : headers;
-            const matrix = [effectiveHeaders];
+
+            // Pre-fetch tbody rows needed by both colEmpty computation and matrix building
             const tbodyRows = table.querySelectorAll('tbody tr');
+
+            // Compute which columns are fully-empty so we can blank their headers
+            const numCols = effectiveHeaders.length;
+            const colEmpty = Array(numCols).fill(true);
+            tbodyRows.forEach(tr => {
+                tr.querySelectorAll('td').forEach((td, ci) => {
+                    if (!td.classList.contains('empty-seat')) colEmpty[ci] = false;
+                });
+            });
+
+            // Blank headers for fully-empty columns & update DOM
+            const updatedHeaders = effectiveHeaders.map((h, ci) => colEmpty[ci] ? '' : h);
+            table.querySelectorAll('thead th').forEach((th, ci) => {
+                const input = th.querySelector('.col-header-input');
+                if (colEmpty[ci]) {
+                    if (input) input.value = '';
+                    else th.textContent = '';
+                }
+            });
+
+            const matrix = [updatedHeaders];
             let totalInRoom = 0;
             const counts = {};
+
 
             tbodyRows.forEach(tr => {
                 const rowData = [];

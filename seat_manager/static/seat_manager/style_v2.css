@@ -900,6 +900,24 @@ body {
 }
 
 
+/* Bench-group divider: thick right border on last column of each bench group */
+.bench-divider th,
+.bench-divider td,
+th.bench-divider,
+td.bench-divider {
+    border-right: 6px solid var(--primary-color) !important;
+    padding-right: 10px !important;
+}
+
+/* Bench-group start: thick left border on first column of each new bench group */
+.bench-start th,
+.bench-start td,
+th.bench-start,
+td.bench-start {
+    border-left: 6px solid var(--primary-color) !important;
+    padding-left: 10px !important;
+}
+
 /* Utilities & Animations */
 .hidden {
     display: none !important;
@@ -1041,6 +1059,11 @@ body {
     }
 
     /* Compact table cells in print to fit more content */
+    .print-container .seating-table,
+    .print-container .attendance-table {
+        margin-bottom: 0.5rem !important;
+    }
+
     .print-container .seating-table th,
     .print-container .seating-table td,
     .print-container .attendance-table th,
@@ -1060,16 +1083,48 @@ body {
 
     /* Stats and door indicator in print */
     .print-container .stats-container {
-        margin-top: 0.5rem !important;
-        padding-top: 0.5rem !important;
+        margin-top: 0.2rem !important;
+        padding-top: 0.3rem !important;
         font-size: 0.75rem !important;
         break-inside: avoid;
         page-break-inside: avoid;
     }
 
+    /* Reduce gap between year breakdown and total capacity line */
+    .print-container .stats-container > div:last-child {
+        margin-top: 0.2rem !important;
+    }
+
     /* Shrink the gap above the door/table wrapper */
     .print-container>div[style*="margin-top: 1.5rem"] {
         margin-top: 0.5rem !important;
+    }
+
+    /* Print footer: push to absolute bottom of the page robustly */
+    .print-footer {
+        margin-top: auto !important;
+        width: 100% !important;
+        padding-top: 15px !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Force entire print-container onto one page with full height CSS */
+    .print-container {
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 97vh !important;
+        padding-bottom: 0 !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Bench divider print: use dark ink colour */
+    .bench-divider, td.bench-divider, th.bench-divider {
+        border-right: 4px solid #444 !important;
+    }
+    .bench-start, td.bench-start, th.bench-start {
+        border-left: 4px solid #444 !important;
     }
 
     .door-indicator {
