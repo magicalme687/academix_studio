@@ -85,11 +85,8 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'seat_manager', 'static'),
 ]
 
-# Use whitenoise compressed storage only if whitenoise is installed (production)
-try:
-    import whitenoise  # noqa
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-except ImportError:
-    pass  # Use Django's default StaticFilesStorage for local dev
+# Use whitenoise middleware for serving, but keep default storage to avoid Vercel build bug
+# with staticfiles.json copying in nested paths.
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
