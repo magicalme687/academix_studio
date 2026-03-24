@@ -2183,8 +2183,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!cell.student) return `<td class="chart-seat empty-seat" draggable="true" title="Drag to rearrange or click to fill seat."></td>`;
 
                         // Handle both old format (string) and new format (object)
+                        // Backend sends { student: "enrollment_str", name: "...", year: "..." }
+                        // After sync, format is { student: { enrollment, name }, year: "..." }
                         const enrollmentStr = typeof cell.student === 'object' ? (cell.student.enrollment || '') : cell.student;
-                        const nameStr = typeof cell.student === 'object' ? (cell.student.name || '') : '';
+                        const nameStr = typeof cell.student === 'object' ? (cell.student.name || '') : (cell.name || '');
 
                         let lenClass = 'len-short';
                         if (enrollmentStr.length > 11) lenClass = 'len-long';
@@ -2698,7 +2700,11 @@ document.addEventListener('DOMContentLoaded', () => {
         newRoomAttendance.forEach(sheet => {
             sheet.students.forEach(stu => {
                 if (uniqueStudentsByYear[stu.year]) {
-                    uniqueStudentsByYear[stu.year].set(stu.enrollment, stu);
+                    // Preserve existing name from attendance_data if the DOM-scraped name is empty
+                    // (DOM seats only store enrollment in data-name when student was not manually added)
+                    const existing = uniqueStudentsByYear[stu.year].get(stu.enrollment);
+                    const resolvedName = stu.name || (existing ? existing.name : '');
+                    uniqueStudentsByYear[stu.year].set(stu.enrollment, { ...stu, name: resolvedName });
                 }
             });
         });
