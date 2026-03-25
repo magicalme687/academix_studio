@@ -1958,8 +1958,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabTitleMap = {
             'tab-timetable': 'Master_Timetable',
             'tab-seating': 'Seating_Charts',
+            'tab-seating-blank': 'Blank_Seating_Charts',
             'tab-attendance-master': 'Master_Attendance',
             'tab-attendance-room': 'Room_Wise_Attendance',
+            'tab-attendance-blank': 'Blank_Attendance_Sheets',
             'tab-attendance': 'Attendance_Sheets',
         };
         const originalTitle = document.title;
@@ -2102,6 +2104,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Build Seating Charts Tab
         let seatingHtml = `<h1 style="font-size: 2.5rem; color: var(--primary-color); text-align: center; margin-bottom: 2rem;">Seating Charts</h1>`;
+        let seatingBlankHtml = `<h1 style="font-size: 2.5rem; color: var(--primary-color); text-align: center; margin-bottom: 2rem;">Blank Seating Charts</h1>`;
 
         const consolidatedSeating = {};
 
@@ -2166,13 +2169,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         door: plan.door
                     };
 
-                    seatingHtml += `
+                    const commonHeaderHtml = `
             <div class="glass-card ${orientationClass} print-container" style="margin-bottom: 4rem; overflow-x: auto; position: relative;">
                                 ${buildPrintHeader(`Seating Chart • ${plan.room_name}`)}
                                 <div style="color: var(--text-main); margin-bottom: 0.75rem; text-align: center; font-size: 0.85rem; font-weight: 600; line-height: 1.4; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px;">
                                     <i class="fa-regular fa-calendar" style="margin-right:4px; opacity:0.7;"></i>${sessionsHtml}
                                 </div>
-                                
                                 <div style="position: relative; display: inline-block; width: 100%; margin-top: 1.5rem;">
                                     <div class="door-indicator ${plan.door}"><i class="fa-solid fa-door-open"></i> Entry</div>
                                     <table class="seating-table" data-table-id="${tableId}">
@@ -2197,8 +2199,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     })()}
                                             </tr>
                                         </thead>
-                                         <tbody>
-                                             ${plan.matrix.slice(1).map(row => `
+                                         <tbody>`;
+
+                    seatingHtml += commonHeaderHtml;
+
+                    // Generate Normal Rows
+                    seatingHtml += plan.matrix.slice(1).map(row => `
                                                 <tr>
                                                     ${row.map((cell, ci) => {
                         const numCols = row.length;
@@ -2208,9 +2214,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         const benchClassStr = benchClass ? ' ' + benchClass : '';
                         if (!cell || !cell.student) return `<td class="chart-seat empty-seat${benchClassStr}" draggable="true" title="Drag to rearrange or click to fill seat."></td>`;
 
-                        // Handle both old format (string) and new format (object)
-                        // Backend sends { student: "enrollment_str", name: "...", year: "..." }
-                        // After sync, format is { student: { enrollment, name }, year: "..." }
                         const enrollmentStr = typeof cell.student === 'object' ? (cell.student.enrollment || '') : cell.student;
                         const nameStr = typeof cell.student === 'object' ? (cell.student.name || '') : (cell.name || '');
 
@@ -2224,7 +2227,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </td>`;
                     }).join('')}
                                                 </tr>
-                                            `).join('')}
+                                            `).join('');
+
+                    const commonFooterHtml = `
                                         </tbody>
                                     </table>
                                 </div>
@@ -2245,12 +2250,67 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${renderFooterHtml(idx === plansForRoom.length - 1, 'seating')}
                             </div>
                     `;
+
+                    seatingHtml += commonFooterHtml;
                 });
 
                 seatingHtml += `</div>`; // Close room content
             });
+
+            // --- BUILD BLANK SEATING CHART (SINGLE GENERIC TEMPLATE) ---
+            const firstPlan = Object.values(consolidatedSeating)[0];
+            if (firstPlan) {
+                const orientationClass = firstPlan.cols > firstPlan.rows ? 'landscape-table' : 'portrait-table';
+                const sessionsHtml = firstPlan.sessions.map(s => `<span style="white-space:nowrap;">${s.date} &nbsp;${s.shift}</span>`).join('<span style="margin:0 6px;opacity:0.5;">•</span>');
+                
+                seatingBlankHtml += `
+            <div class="glass-card ${orientationClass} print-container" style="margin-bottom: 4rem; overflow-x: auto; position: relative;">
+                ${buildPrintHeader(`Seating Chart • __________________`)}
+                <div style="color: var(--text-main); margin-bottom: 0.75rem; text-align: center; font-size: 0.85rem; font-weight: 600; line-height: 1.4; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px;">
+                    <i class="fa-regular fa-calendar" style="margin-right:4px; opacity:0.7;"></i>${sessionsHtml}
+                </div>
+                <div style="position: relative; display: inline-block; width: 100%; margin-top: 1.5rem;">
+                    <div class="door-indicator ${firstPlan.door}"><i class="fa-solid fa-door-open"></i> Entry</div>
+                    <table class="seating-table" data-table-id="blank_tbl">
+                        <thead>
+                            <tr>
+                                ${firstPlan.headers.map((h, ci) => {
+                    const isBenchDiv = ((ci + 1) % 3 === 0) && (ci < firstPlan.headers.length - 1);
+                    const isBenchStart = (ci % 3 === 0) && ci > 0;
+                    const cls = [isBenchDiv ? 'bench-divider' : '', isBenchStart ? 'bench-start' : ''].filter(Boolean).join(' ');
+                    return `<th class="${cls}"></th>`;
+                }).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${firstPlan.matrix.slice(1).map(row => `
+                                <tr>
+                                    ${row.map((cell, ci) => {
+                    const isBenchDiv = ((ci + 1) % 3 === 0) && (ci < row.length - 1);
+                    const isBenchStart = (ci % 3 === 0) && ci > 0;
+                    const benchClass = [isBenchDiv ? 'bench-divider' : '', isBenchStart ? 'bench-start' : ''].filter(Boolean).join(' ');
+                    const benchClassStr = benchClass ? ' ' + benchClass : '';
+                    return `<td class="chart-seat occupied-seat${benchClassStr}">
+                                <div class="student-id len-medium" style="opacity:0; user-select:none;">&nbsp;</div>
+                                <div class="year-badge" style="background:#f1f1f1; border:1px dashed #ccc; padding:2px 4px; border-radius:3px; font-size:9px; height:18px; width:40px; margin: 3px auto;"></div>
+                            </td>`;
+                }).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="stats-container" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                    <div style="text-align: center; margin-top: 1rem; color: var(--text-main); font-weight: 600;">
+                        Total Students in Room: <span style="color: var(--primary-color);">_____ / ${firstPlan.rows * firstPlan.cols} Capacity</span>
+                    </div>
+                </div>
+                ${renderFooterHtml(true, 'seating')}
+            </div>`;
+            }
         }
         document.getElementById('tab-seating').innerHTML = seatingHtml;
+        document.getElementById('tab-seating-blank').innerHTML = seatingBlankHtml;
 
         // Call abstracted function to generate and render attendance tabs
         window.renderAttendanceTabs(data, instituteName, instituteLogoBase64, departmentName, instituteSubheader);
@@ -2536,6 +2596,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Build Room-Wise Attendance Tab
         let roomAttendanceHtml = `<h1 style="font-size: 2.5rem; color: var(--primary-color); text-align: center; margin-bottom: 2rem;">Room - Wise Attendance</h1>`;
+        let roomAttendanceBlankHtml = `<h1 style="font-size: 2.5rem; color: var(--primary-color); text-align: center; margin-bottom: 2rem;">Blank Room Attendance</h1>`;
         const consolidatedAttendance = {};
 
         if (data.room_attendance_data && data.room_attendance_data.length > 0) {
@@ -2594,7 +2655,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         let subtitle = `ROOM ATTENDANCE • ${sheet.room_name} • ${sheet.year}${numPages > 1 ? ` (Page ${page + 1}/${numPages})` : ''}`;
 
-                        roomAttendanceHtml += `
+                        const commonAttendanceHeader = `
             <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem; overflow-x: auto; position: relative; display: flex; flex-direction: column;">
                                         ${buildPrintHeader(subtitle)}
                                         <table class="attendance-table" style="width: 100%; border-collapse: collapse;">
@@ -2611,8 +2672,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         }).join('')}
                                                 </tr>
                                             </thead>
-                                            <tbody>
-                                                ${pageStudents.map((stu, i) => {
+                                            <tbody>`;
+
+                        roomAttendanceHtml += commonAttendanceHeader;
+
+                        roomAttendanceHtml += pageStudents.map((stu, i) => {
                             const idx = startIndex + i;
                             const enrollmentStr = typeof stu === 'object' ? (stu.enrollment || '') : stu;
                             const nameStr = typeof stu === 'object' ? (stu.name || '') : '';
@@ -2629,8 +2693,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                                         ${sheet.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;"></td>`).join('')}
                                                     </tr>
                                                     `;
-                        }).join('')}
-                                                ${isLastPage ? `
+                        }).join('');
+
+                        const commonTotalHtml = isLastPage ? `
                                                 <tr>
                                                     <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Total:</td>
                                                     ${sheet.sessions.map(() => `<td style="text-align: center; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">${sheet.students.length}</td>`).join('')}
@@ -2643,7 +2708,24 @@ document.addEventListener('DOMContentLoaded', () => {
                                                     <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Absent:</td>
                                                     ${sheet.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;"></td>`).join('')}
                                                 </tr>
-                                                ` : ''}
+                                                ` : '';
+
+                        const blankTotalHtml = isLastPage ? `
+                                                <tr>
+                                                    <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Total:</td>
+                                                    ${sheet.sessions.map(() => `<td style="text-align: center; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">&nbsp;</td>`).join('')}
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Present:</td>
+                                                    ${sheet.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;"></td>`).join('')}
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Absent:</td>
+                                                    ${sheet.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;"></td>`).join('')}
+                                                </tr>
+                                                ` : '';
+
+                        roomAttendanceHtml += commonTotalHtml + `
                                             </tbody>
                                         </table>
                                         <div style="flex-grow: 1;"></div>
@@ -2655,10 +2737,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 roomAttendanceHtml += `</div>`;
             });
+
+            // --- BUILD BLANK ROOM ATTENDANCE (ONE TEMPLATE PER YEAR) ---
+            const uniqueYears = [...new Set(Object.values(consolidatedAttendance).map(s => s.year))];
+            uniqueYears.sort((a, b) => yearOrder.indexOf(a) - yearOrder.indexOf(b));
+
+            uniqueYears.forEach(yr => {
+                const sheetForYear = Object.values(consolidatedAttendance).find(s => s.year === yr);
+                
+                let subtitle = `ROOM ATTENDANCE • <span style="display:inline-block; width: 60px; border-bottom: 1px dashed var(--text-muted);"></span> • ${yr}`;
+                roomAttendanceBlankHtml += `
+            <div class="glass-card print-container portrait-table" style="margin-bottom: 3rem; overflow-x: auto; position: relative; display: flex; flex-direction: column;">
+                ${buildPrintHeader(subtitle)}
+                <table class="attendance-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px; border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">S.No</th>
+                            <th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Enrollment No</th>
+                            <th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05);">Student Name</th>
+                            ${sheetForYear.sessions.map(s => {
+                                const sKey = `${s.date}|||${s.shift}`;
+                                const sEntry = subjectLookup[sKey] || {};
+                                const sCode = sEntry[yr] || '';
+                                return `<th style="border: 1px solid var(--border-color); padding: 12px; background: rgba(0,0,0,0.05); min-width:90px;">Sign<br><span style="font-size: 0.8rem; font-weight: normal;">${s.date}<br>${s.shift}</span>${sCode && sCode !== '-' ? `<br><span style="font-size: 0.75rem; font-style: italic; color: var(--accent-color); font-weight: 600;">${sCode}</span>` : ''}</th>`;
+                            }).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Array.from({length: 25}).map((_, idx) => `
+                            <tr>
+                                <td style="border: 1px solid var(--border-color); padding: 12px;">${idx + 1}</td>
+                                <td style="border: 1px solid var(--border-color); padding: 12px; font-size: 10pt; font-weight: bold;">&nbsp;</td>
+                                <td style="border: 1px solid var(--border-color); padding: 12px; font-size: 10pt;">&nbsp;</td>
+                                ${sheetForYear.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;">&nbsp;</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                        <tr>
+                            <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Total:</td>
+                            ${sheetForYear.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;">&nbsp;</td>`).join('')}
+                        </tr>
+                        <tr>
+                            <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Present:</td>
+                            ${sheetForYear.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;">&nbsp;</td>`).join('')}
+                        </tr>
+                        <tr>
+                            <td colspan="3" style="text-align: right; font-weight: bold; font-size: 1.1em; border: 1px solid var(--border-color); padding: 12px;">Absent:</td>
+                            ${sheetForYear.sessions.map(() => `<td style="border: 1px solid var(--border-color); padding: 12px;">&nbsp;</td>`).join('')}
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="flex-grow: 1;"></div>
+                ${renderFooterHtml(true, 'attendance')}
+            </div>`;
+            });
+
         } else {
             roomAttendanceHtml += `<p style="text-align:center; color: var(--text-muted);">Generating...</p>`;
+            roomAttendanceBlankHtml += `<p style="text-align:center; color: var(--text-muted);">Generating...</p>`;
         }
         document.getElementById('tab-attendance-room').innerHTML = roomAttendanceHtml;
+        document.getElementById('tab-attendance-blank').innerHTML = roomAttendanceBlankHtml;
     };
 
     window.syncSeatingDOMToGlobalData = function () {

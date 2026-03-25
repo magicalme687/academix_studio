@@ -347,7 +347,9 @@ def generate_seating(request):
                     for r in range(rows):
                         for c in range(cols):
                             yr = year_map[r][c]
-                            if yr: counts[yr] += 1
+                            student_obj = seating[r][c]
+                            if yr and student_obj and student_obj != "":
+                                counts[yr] += 1
                     
                     # Strip zero counts
                     counts = {k: v for k, v in counts.items() if v > 0}
