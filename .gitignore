@@ -12,6 +12,7 @@ staticfiles/
 
 # debug / temp files
 *.json
+!vercel.json
 test_*.py
 check_*.py
 
